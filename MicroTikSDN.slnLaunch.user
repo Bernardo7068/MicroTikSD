@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Novo Perfil",
+    "Projects": [
+      {
+        "Path": "MikroTikSDN.Core\\MikroTikSDN.Core.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "MikroTikSDN.UI\\MikroTikSDN.UI.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

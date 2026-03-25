@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MikroTikSDN.Core/MikroTikSDN.Core.csproj" />
+  <Project Path="MikroTikSDN.UI/MikroTikSDN.UI.csproj" />
+</Solution>
