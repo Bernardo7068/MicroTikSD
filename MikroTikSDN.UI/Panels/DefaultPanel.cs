@@ -4,7 +4,7 @@ using System.Text;
 
 namespace MikroTikSDN.UI.Panels
 {
-    internal class InterfacesPanel
+    internal class DefaultPanel
     {
     }
 }

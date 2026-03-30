@@ -8,8 +8,11 @@ namespace MikroTikSDN.UI
         [STAThread]
         static void Main()
         {
-            ApplicationConfiguration.Initialize();
-            Application.Run(new MainForm());
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            // É AQUI A MAGIA: Dizemos ao programa para arrancar com o LoginForm!
+            Application.Run(new LoginForm());
         }
     }
 }

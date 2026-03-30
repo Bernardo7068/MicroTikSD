@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "4e2b49bf-292b-40e1-bbab-2f94647aa25b",
+    "Name": "micro",
+    "IpAddress": "192.168.1.109",
+    "MacAddress": "Desconhecido",
+    "Username": "admin",
+    "Password": "12345"
+  },
+  {
+    "Id": "a515a00a-2d4b-4e2c-ab02-c47e538ca5af",
+    "Name": "microtik",
+    "IpAddress": "192.168.79.1",
+    "MacAddress": "C4:AD:34:9F:56:0A",
+    "Username": "admin",
+    "Password": "12345"
+  }
+]
