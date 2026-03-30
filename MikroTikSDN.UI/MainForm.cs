@@ -174,7 +174,7 @@ namespace MikroTikSDN.UI
             table.Columns.Add("Propriedade");
             table.Columns.Add("Valor");
             table.Rows.Add("Servidores DNS", dns.Servers ?? "—");
-            table.Rows.Add("Pedidos remotos", dns.AllowRemote ? "✅ Ativo" : "❌ Desativo");
+            table.Rows.Add("Pedidos remotos", dns.AllowRemote?.ToLower() == "yes" || dns.AllowRemote?.ToLower() == "true" ? "✅ Ativo" : "❌ Desativo");
             table.Rows.Add("Tamanho de cache", dns.CacheSize ?? "—");
             _dgvData.DataSource = table;
         }
@@ -368,7 +368,7 @@ namespace MikroTikSDN.UI
                     var dns = await svc.Dns.GetSettingsAsync();
                     using var d = new CrudDialog("Configurar DNS",
                         ("Servidores (vírgula)", dns.Servers ?? ""),
-                        ("Pedidos Remotos (yes/no)", dns.AllowRemote ? "yes" : "no"));
+                        ("Pedidos Remotos (yes/no)", dns.AllowRemote ?? "no"));
                     if (d.ShowDialog(this) != DialogResult.OK) return;
                     bool allow = d["Pedidos Remotos (yes/no)"].ToLower() == "yes";
                     await svc.Dns.UpdateSettingsAsync(d["Servidores (vírgula)"], allow);
@@ -379,7 +379,7 @@ namespace MikroTikSDN.UI
                     if (_dgvData.SelectedRows.Count == 0) return;
                     if (_dgvData.SelectedRows[0].DataBoundItem is not RouterWireless w) return;
                     if (string.IsNullOrEmpty(w.Id)) return;
-                    await svc.Wireless.SetStateAsync(w.Id, w.Disabled); // Disabled=true → ativar
+                    await svc.Wireless.SetStateAsync(w.Id, w.Disabled == "true"); // Disabled=true → ativar
                     await LoadSectionAsync("wifi");
                 }
             }

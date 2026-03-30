@@ -8,8 +8,8 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("mac-address")] public string? MacAddress { get; set; }
         [JsonPropertyName("type")] public string? Type { get; set; }
-        [JsonPropertyName("running")] public bool Running { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
+        [JsonPropertyName("running")] public string? Running { get; set; } // Alterado para object
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; } // Alterado para object
         [JsonPropertyName("comment")] public string? Comment { get; set; }
         [JsonPropertyName("mtu")] public string? Mtu { get; set; }
     }

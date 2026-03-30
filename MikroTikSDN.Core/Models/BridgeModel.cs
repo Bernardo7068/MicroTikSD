@@ -9,7 +9,7 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName(".id")] public string? Id { get; set; }
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("comment")] public string? Comment { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
-        [JsonPropertyName("running")] public bool Running { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
+       // [JsonPropertyName("running")] public string? Running { get; set; }
     }
 }

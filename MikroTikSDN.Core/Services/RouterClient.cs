@@ -15,7 +15,6 @@ namespace MikroTikSDN.Core.Services
     {
         private readonly HttpClient _httpClient;
 
-        // Opções de desserialização: aceita tanto "Name" como "name" da API
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -25,7 +24,6 @@ namespace MikroTikSDN.Core.Services
         {
             var handler = new HttpClientHandler
             {
-                // Ignora erros de certificado SSL (comum em routers MikroTik)
                 ServerCertificateCustomValidationCallback = (_, _, _, _) => true
             };
 
@@ -40,8 +38,6 @@ namespace MikroTikSDN.Core.Services
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        // ─── Métodos base ─────────────────────────────────────────────────────
-
         public async Task<T> GetAsync<T>(string endpoint)
         {
             var response = await _httpClient.GetAsync(endpoint);
@@ -50,21 +46,28 @@ namespace MikroTikSDN.Core.Services
             return JsonSerializer.Deserialize<T>(json, _jsonOptions)!;
         }
 
-        // PUT = criar novo recurso na API do MikroTik
-        public async Task PutAsync(string endpoint, Dictionary<string, string> data)
+        // Alterado para 'object' para aceitar new { ... }
+        // Altera o parâmetro 'data' de Dictionary para 'object'
+        // Altera o parâmetro de Dictionary para object
+        public async Task PutAsync(string endpoint, object data)
         {
             var content = CreateJsonContent(data);
             var response = await _httpClient.PutAsync(endpoint, content);
             await EnsureSuccessAsync(response);
         }
 
-        // PATCH = editar recurso existente
-        public async Task PatchAsync(string endpoint, Dictionary<string, string> data)
+        public async Task PatchAsync(string endpoint, object data)
         {
             var content = CreateJsonContent(data);
             var request = new HttpRequestMessage(new HttpMethod("PATCH"), endpoint) { Content = content };
             var response = await _httpClient.SendAsync(request);
             await EnsureSuccessAsync(response);
+        }
+
+        private static StringContent CreateJsonContent(object data)
+        {
+            var json = JsonSerializer.Serialize(data);
+            return new StringContent(json, Encoding.UTF8, "application/json");
         }
 
         public async Task DeleteAsync(string endpoint)
@@ -86,14 +89,7 @@ namespace MikroTikSDN.Core.Services
             }
         }
 
-        // ─── Helpers ──────────────────────────────────────────────────────────
-
-        private static StringContent CreateJsonContent(Dictionary<string, string> data)
-        {
-            // Usar Dictionary garante que as chaves com hífens (ex: "dst-address") ficam corretas no JSON
-            var json = JsonSerializer.Serialize(data);
-            return new StringContent(json, Encoding.UTF8, "application/json");
-        }
+        
 
         private static async Task EnsureSuccessAsync(HttpResponseMessage response)
         {

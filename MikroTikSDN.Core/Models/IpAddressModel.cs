@@ -8,7 +8,7 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("address")] public string? Address { get; set; }
         [JsonPropertyName("network")] public string? Network { get; set; }
         [JsonPropertyName("interface")] public string? Interface { get; set; }
-        [JsonPropertyName("dynamic")] public bool Dynamic { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
+        [JsonPropertyName("dynamic")] public string? Dynamic { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
     }
 }

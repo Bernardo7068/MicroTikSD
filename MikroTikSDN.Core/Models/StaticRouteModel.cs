@@ -11,8 +11,8 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("gateway")] public string? Gateway { get; set; }
         // NOTA: Distance vem como string da API do RouterOS — não usar int
         [JsonPropertyName("distance")] public string? Distance { get; set; }
-        [JsonPropertyName("active")] public bool Active { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
+        [JsonPropertyName("active")] public string? Active { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
         [JsonPropertyName("comment")] public string? Comment { get; set; }
     }
 }

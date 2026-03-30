@@ -8,8 +8,8 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("ssid")] public string? Ssid { get; set; }
         [JsonPropertyName("security-profile")] public string? SecurityProfile { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
-        [JsonPropertyName("running")] public bool Running { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
+        [JsonPropertyName("running")] public string? Running { get; set; }
         [JsonPropertyName("mode")] public string? Mode { get; set; }
         [JsonPropertyName("band")] public string? Band { get; set; }
         [JsonPropertyName("frequency")] public string? Frequency { get; set; }

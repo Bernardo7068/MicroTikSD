@@ -10,7 +10,7 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("interface")] public string? Interface { get; set; }
         [JsonPropertyName("address-pool")] public string? AddressPool { get; set; }
-        [JsonPropertyName("disabled")] public bool Disabled { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
         [JsonPropertyName("lease-time")] public string? LeaseTime { get; set; }
     }
 }
