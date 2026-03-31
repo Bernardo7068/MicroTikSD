@@ -23,5 +23,14 @@ namespace MikroTikSDN.Core.Services
 
         public Task DeleteRouteAsync(string id)
             => _client.DeleteAsync($"/rest/ip/route/{id}");
+
+        public async Task UpdateRouteAsync(string id, string dst, string gway, string dist, string comment) =>
+    await _client.PatchAsync($"/rest/ip/route/{id}", new
+    {
+        @dst_address = dst,
+        gateway = gway,
+        distance = dist,
+        comment = comment
+    });
     }
 }

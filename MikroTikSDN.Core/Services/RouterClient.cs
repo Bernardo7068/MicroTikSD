@@ -1,13 +1,14 @@
+using MikroTikSDN.Core.Exceptions;
+using MikroTikSDN.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using MikroTikSDN.Core.Exceptions;
-using MikroTikSDN.Core.Models;
 
 namespace MikroTikSDN.Core.Services
 {
@@ -89,7 +90,14 @@ namespace MikroTikSDN.Core.Services
             }
         }
 
-        
+        public async Task<List<T>> GetListAsync<T>(string path)
+        {
+            var response = await _httpClient.GetAsync(path);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<T>>() ?? new List<T>();
+        }
+
+
 
         private static async Task EnsureSuccessAsync(HttpResponseMessage response)
         {

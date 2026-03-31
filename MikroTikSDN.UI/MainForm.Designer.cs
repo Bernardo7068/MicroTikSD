@@ -71,9 +71,7 @@ namespace MikroTikSDN.UI
             string[,] navItems = {
                 { "📡  Interfaces",      "iface"    },
                 { "📶  Wireless",        "wifi"     },
-                { "🔒  WiFi Profiles",   "wifi_sec" },
                 { "🌉  Bridges",         "bridge"   },
-                { "⚓  Bridge Ports",    "bridge_p" },
                 { "🏷️  Endereços IP",   "ip"       },
                 { "🛤️  Rotas Estáticas","route"    },
                 { "🧬  Servidor DHCP",  "dhcp"     },

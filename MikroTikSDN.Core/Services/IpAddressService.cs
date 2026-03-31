@@ -20,5 +20,8 @@ namespace MikroTikSDN.Core.Services
 
         public async Task DeleteAddressAsync(string id) =>
             await _client.DeleteAsync($"/rest/ip/address/{id}");
+
+        public async Task UpdateAddressAsync(string id, string address, string @interface) =>
+    await _client.PatchAsync($"/rest/ip/address/{id}", new { address, @interface });
     }
 }
