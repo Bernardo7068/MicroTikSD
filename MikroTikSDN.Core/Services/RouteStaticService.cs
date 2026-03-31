@@ -12,25 +12,25 @@ namespace MikroTikSDN.Core.Services
         public Task<List<StaticRouteModel>> GetRoutesAsync()
             => _client.GetAsync<List<StaticRouteModel>>("/rest/ip/route");
 
-        // CORRIGIDO: distance é opcional com valor default "1"
         public Task AddRouteAsync(string dstAddress, string gateway, string distance = "1")
             => _client.PutAsync("/rest/ip/route", new Dictionary<string, string>
             {
-                ["dst-address"] = dstAddress,
+                ["dst-address"] = dstAddress,   // hífen correto
                 ["gateway"] = gateway,
                 ["distance"] = distance
             });
 
+        // CORRIGIDO: @dst_address → "dst-address" via Dictionary
+        public Task UpdateRouteAsync(string id, string dst, string gateway, string distance, string comment)
+            => _client.PatchAsync($"/rest/ip/route/{id}", new Dictionary<string, string>
+            {
+                ["dst-address"] = dst,
+                ["gateway"] = gateway,
+                ["distance"] = distance,
+                ["comment"] = comment
+            });
+
         public Task DeleteRouteAsync(string id)
             => _client.DeleteAsync($"/rest/ip/route/{id}");
-
-        public async Task UpdateRouteAsync(string id, string dst, string gway, string dist, string comment) =>
-    await _client.PatchAsync($"/rest/ip/route/{id}", new
-    {
-        @dst_address = dst,
-        gateway = gway,
-        distance = dist,
-        comment = comment
-    });
     }
 }

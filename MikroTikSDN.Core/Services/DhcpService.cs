@@ -1,4 +1,6 @@
-﻿using MikroTikSDN.Core.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using MikroTikSDN.Core.Models;
 
 namespace MikroTikSDN.Core.Services
 {
@@ -7,64 +9,53 @@ namespace MikroTikSDN.Core.Services
         private readonly RouterClient _client;
         public DhcpService(RouterClient client) => _client = client;
 
-        // --- DHCP SERVER (Usa o teu DhcpModel) ---
-        public async Task<List<DhcpModel>> GetServersAsync() =>
-            await _client.GetListAsync<DhcpModel>("/rest/ip/dhcp-server");
+        // ─── DHCP Server ──────────────────────────────────────────────────────
 
-        public async Task AddServerAsync(string name, string iface, string pool)
-        {
-            // Usamos um Dictionary para poder escrever o nome com HÍFEN
-            var data = new Dictionary<string, object>
-    {
-        { "name", name },
-        { "interface", iface },
-        { "address-pool", pool } // O MikroTik exige o hífen aqui!
-    };
+        public Task<List<DhcpModel>> GetServersAsync()
+            => _client.GetAsync<List<DhcpModel>>("/rest/ip/dhcp-server");
 
-            await _client.PutAsync("/rest/ip/dhcp-server", data);
-        }
-
-        public async Task UpdateServerAsync(string id, string name, string iface, string pool)
-        {
-            var data = new Dictionary<string, object>
-    {
-        { "name", name },
-        { "interface", iface },
-        { "address-pool", pool }
-    };
-
-            await _client.PatchAsync($"/rest/ip/dhcp-server/{id}", data);
-        }
-
-        public async Task DeleteServerAsync(string id) =>
-            await _client.DeleteAsync($"/rest/ip/dhcp-server/{id}");
-
-
-        // --- DHCP CLIENT ---
-        public async Task<List<DhcpClientModel>> GetClientsAsync() =>
-            await _client.GetListAsync<DhcpClientModel>("/rest/ip/dhcp-client");
-
-        public async Task AddClientAsync(string iface, bool useDns, bool addRoute)
-        {
-            var data = new Dictionary<string, object>
-    {
-        { "interface", iface },
-        { "use-peer-dns", useDns ? "yes" : "no" },
-        { "add-default-route", addRoute ? "yes" : "no" }
-    };
-
-            await _client.PutAsync("/rest/ip/dhcp-client", data);
-        }
-
-        public async Task UpdateClientAsync(string id, string iface, bool useDns, bool addRoute) =>
-            await _client.PatchAsync($"/rest/ip/dhcp-client/{id}", new
+        public Task AddServerAsync(string name, string iface, string pool)
+            => _client.PutAsync("/rest/ip/dhcp-server", new Dictionary<string, string>
             {
-                @interface = iface,
-                @use_peer_dns = useDns ? "yes" : "no",
-                @add_default_route = addRoute ? "yes" : "no"
+                ["name"] = name,
+                ["interface"] = iface,
+                ["address-pool"] = pool   // hífen correto
             });
 
-        public async Task DeleteClientAsync(string id) =>
-            await _client.DeleteAsync($"/rest/ip/dhcp-client/{id}");
+        public Task UpdateServerAsync(string id, string name, string iface, string pool)
+            => _client.PatchAsync($"/rest/ip/dhcp-server/{id}", new Dictionary<string, string>
+            {
+                ["name"] = name,
+                ["interface"] = iface,
+                ["address-pool"] = pool   // hífen correto
+            });
+
+        public Task DeleteServerAsync(string id)
+            => _client.DeleteAsync($"/rest/ip/dhcp-server/{id}");
+
+        // ─── DHCP Client ──────────────────────────────────────────────────────
+
+        public Task<List<DhcpClientModel>> GetClientsAsync()
+            => _client.GetAsync<List<DhcpClientModel>>("/rest/ip/dhcp-client");
+
+        public Task AddClientAsync(string iface, bool useDns, bool addRoute)
+            => _client.PutAsync("/rest/ip/dhcp-client", new Dictionary<string, string>
+            {
+                ["interface"] = iface,
+                ["use-peer-dns"] = useDns ? "yes" : "no",  // hífen correto
+                ["add-default-route"] = addRoute ? "yes" : "no"   // hífen correto
+            });
+
+        // CORRIGIDO: @use_peer_dns / @add_default_route → Dictionary com hífens
+        public Task UpdateClientAsync(string id, string iface, bool useDns, bool addRoute)
+            => _client.PatchAsync($"/rest/ip/dhcp-client/{id}", new Dictionary<string, string>
+            {
+                ["interface"] = iface,
+                ["use-peer-dns"] = useDns ? "yes" : "no",
+                ["add-default-route"] = addRoute ? "yes" : "no"
+            });
+
+        public Task DeleteClientAsync(string id)
+            => _client.DeleteAsync($"/rest/ip/dhcp-client/{id}");
     }
 }

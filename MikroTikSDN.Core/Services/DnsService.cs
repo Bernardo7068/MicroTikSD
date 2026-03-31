@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using MikroTikSDN.Core.Models;
 
 namespace MikroTikSDN.Core.Services
@@ -8,16 +9,22 @@ namespace MikroTikSDN.Core.Services
         private readonly RouterClient _client;
         public DnsService(RouterClient client) => _client = client;
 
-        public async Task<DnsSettingsModel> GetSettingsAsync() =>
-            await _client.GetAsync<DnsSettingsModel>("/rest/ip/dns");
+        public Task<DnsSettingsModel> GetSettingsAsync()
+            => _client.GetAsync<DnsSettingsModel>("/rest/ip/dns");
 
-        // Único método necessário: aceita um objeto anónimo com qualquer campo
-        // MikroTikSDN.Core/Services/DnsService.cs
-        public async Task UpdateSettingsAsync(object dnsData)
-        {
-            // O URL tem de ser limpo. Se o teu RouterClient tiver lógica de ID, 
-            // garante que aqui passas apenas o caminho base.
-            await _client.PatchAsync("/rest/ip/dns", dnsData);
-        }
+        /// <summary>
+        /// Atualiza definições DNS. Aceita qualquer subconjunto de campos.
+        /// Usar sempre Dictionary com hífens (ex: "allow-remote-requests").
+        /// </summary>
+        public Task UpdateSettingsAsync(Dictionary<string, string> data)
+            => _client.PatchAsync("/rest/ip/dns", data);
+
+        // Atalho conveniente para o caso simples (servers + allow-remote)
+        public Task UpdateSettingsAsync(string servers, bool allowRemote)
+            => UpdateSettingsAsync(new Dictionary<string, string>
+            {
+                ["servers"] = servers,
+                ["allow-remote-requests"] = allowRemote ? "yes" : "no"
+            });
     }
 }

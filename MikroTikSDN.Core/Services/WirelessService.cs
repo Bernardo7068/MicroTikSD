@@ -9,94 +9,71 @@ namespace MikroTikSDN.Core.Services
         private readonly RouterClient _client;
         public WirelessService(RouterClient client) => _client = client;
 
-        // Interfaces Wireless
-        public async Task<List<WirelessInterface>> GetWirelessAsync() =>
-            await _client.GetAsync<List<WirelessInterface>>("/rest/interface/wireless");
+        // ─── Interfaces Wireless ──────────────────────────────────────────────
 
-    //    public async Task SetStateAsync(string id, bool enabled) =>
-     //       await _client.PatchAsync($"/rest/interface/wireless/{id}", new { disabled = !enabled });
+        public Task<List<WirelessInterface>> GetWirelessAsync()
+            => _client.GetAsync<List<WirelessInterface>>("/rest/interface/wireless");
 
-        // Perfis de Segurança
-        public async Task<List<SecurityProfile>> GetProfilesAsync() =>
-            await _client.GetAsync<List<SecurityProfile>>("/rest/interface/wireless/security-profiles");
+        public Task SetStateAsync(string id, bool disabled)
+            => _client.PatchAsync($"/rest/interface/wireless/{id}", new Dictionary<string, string>
+            {
+                ["disabled"] = disabled ? "yes" : "no"
+            });
 
-        public async Task AddProfileAsync(string name, string authTypes) =>
-            await _client.PutAsync("/rest/interface/wireless/security-profiles", new { name, @authentication_types = authTypes });
+        // CORRIGIDO: @security_profile → "security-profile" via Dictionary
+        public Task UpdateWirelessSettingsAsync(string id, string ssid, string securityProfile)
+            => _client.PatchAsync($"/rest/interface/wireless/{id}", new Dictionary<string, string>
+            {
+                ["ssid"] = ssid,
+                ["security-profile"] = securityProfile   // hífen correto
+            });
 
-        public async Task UpdateWirelessSettingsAsync(string id, string ssid, string securityProfile) =>
-    await _client.PatchAsync($"/rest/interface/wireless/{id}", new { ssid, @security_profile = securityProfile });
+        public Task UpdateInterfaceAsync(string id, Dictionary<string, string> data)
+            => _client.PatchAsync($"/rest/interface/wireless/{id}", data);
 
-      
+        // Interface Virtual (VAP) — com perfil de segurança
+        public Task AddVirtualInterfaceAsync(string master, string ssid, string securityProfile = "default")
+            => _client.PutAsync("/rest/interface/wireless", new Dictionary<string, string>
+            {
+                ["master-interface"] = master,            // hífen correto
+                ["ssid"] = ssid,
+                ["security-profile"] = securityProfile,  // hífen correto
+                ["mode"] = "ap-bridge",
+                ["disabled"] = "no"
+            });
 
-        public async Task UpdateInterfaceAsync(string id, object data) =>
-    await _client.PatchAsync($"/rest/interface/wireless/{id}", data);
+        public Task DeleteVirtualInterfaceAsync(string id)
+            => _client.DeleteAsync($"/rest/interface/wireless/{id}");
 
+        // ─── Perfis de Segurança ──────────────────────────────────────────────
 
-        // Adicionar Interface Virtual (VAP)
-        public async Task AddVirtualInterfaceAsync(string master, string ssid)
-        {
-            // O MikroTik exige o master-interface e o modo ap-bridge para VAPs
-            var data = new Dictionary<string, object>
-    {
-        { "master-interface", master },
-        { "ssid", ssid },
-        { "mode", "ap-bridge" },
-        { "disabled", "no" }
-    };
-            await _client.PutAsync("/rest/interface/wireless", data);
-        }
+        public Task<List<SecurityProfile>> GetProfilesAsync()
+            => _client.GetAsync<List<SecurityProfile>>("/rest/interface/wireless/security-profiles");
 
-        // Adicionar Perfil de Segurança
-        public async Task AddProfileAsync(string name, string authTypes, string ciphers, string password)
-        {
-            // IMPORTANTE: O 'mode' tem de ser 'dynamic-keys' para o router aceitar as chaves WPA/WPA2
-            var data = new Dictionary<string, object>
-    {
-        { "name", name },
-        { "mode", "dynamic-keys" },
-        { "authentication-types", authTypes.Replace(" ", "") }, // Remove espaços
-        { "unicast-ciphers", ciphers.Replace(" ", "") },       // Remove espaços
-        { "group-ciphers", ciphers.Replace(" ", "") },         // Remove espaços
-        { "wpa-pre-shared-key", password },
-        { "wpa2-pre-shared-key", password }
-    };
-            await _client.PutAsync("/rest/interface/wireless/security-profiles", data);
-        }
+        // CORRIGIDO: @authentication_types → "authentication-types" via Dictionary
+        public Task AddProfileAsync(string name, string authTypes, string ciphers, string password)
+            => _client.PutAsync("/rest/interface/wireless/security-profiles", new Dictionary<string, string>
+            {
+                ["name"] = name,
+                ["mode"] = "dynamic-keys",
+                ["authentication-types"] = authTypes.Replace(" ", ""),  // hífen correto
+                ["unicast-ciphers"] = ciphers.Replace(" ", ""),    // hífen correto
+                ["group-ciphers"] = ciphers.Replace(" ", ""),    // hífen correto
+                ["wpa-pre-shared-key"] = password,                    // hífen correto
+                ["wpa2-pre-shared-key"] = password                     // hífen correto
+            });
 
-        // No MikroTikSDN.Core/Services/WirelessService.cs
+        // CORRIGIDO: @authentication_types, @unicast_ciphers, @wpa2_pre_shared_key → Dictionary
+        public Task UpdateProfileAsync(string id, string name, string auth, string cipher, string psk)
+            => _client.PatchAsync($"/rest/interface/wireless/security-profiles/{id}", new Dictionary<string, string>
+            {
+                ["name"] = name,
+                ["authentication-types"] = auth,    // hífen correto
+                ["unicast-ciphers"] = cipher,  // hífen correto
+                ["wpa2-pre-shared-key"] = psk      // hífen correto
+            });
 
-        public async Task AddVirtualInterfaceAsync(string master, string ssid, string securityProfile)
-        {
-            var data = new Dictionary<string, object>
-    {
-        { "master-interface", master },
-        { "ssid", ssid },
-        { "security-profile", securityProfile },
-        { "mode", "ap-bridge" },
-        { "disabled", "no" }
-    };
-
-            // PUT para criar o recurso no MikroTik
-            await _client.PutAsync("/rest/interface/wireless", data);
-        }
-
-        public async Task SetStateAsync(string id, bool disabled) =>
-    await _client.PatchAsync($"/rest/interface/wireless/{id}", new { disabled = disabled.ToString().ToLower() });
-
-        public async Task DeleteProfileAsync(string id) =>
-            await _client.DeleteAsync($"/rest/interface/wireless/security-profiles/{id}");
-
-
-        public async Task DeleteVirtualInterfaceAsync(string id) =>
-            await _client.DeleteAsync($"/rest/interface/wireless/{id}");
-
-        public async Task UpdateProfileAsync(string id, string name, string auth, string cipher, string psk) =>
-    await _client.PatchAsync($"/rest/interface/wireless/security-profiles/{id}", new
-    {
-        name,
-        @authentication_types = auth,
-        @unicast_ciphers = cipher,
-        @wpa2_pre_shared_key = psk
-    });
+        public Task DeleteProfileAsync(string id)
+            => _client.DeleteAsync($"/rest/interface/wireless/security-profiles/{id}");
     }
 }

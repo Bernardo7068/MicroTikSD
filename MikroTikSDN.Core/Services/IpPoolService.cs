@@ -1,4 +1,6 @@
-﻿using MikroTikSDN.Core.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using MikroTikSDN.Core.Models;
 
 namespace MikroTikSDN.Core.Services
 {
@@ -7,12 +9,24 @@ namespace MikroTikSDN.Core.Services
         private readonly RouterClient _client;
         public IpPoolService(RouterClient client) => _client = client;
 
-        // Lista todas as Pools (IP -> Pool no Winbox)
-        public async Task<List<IpPoolModel>> GetAllAsync() =>
-            await _client.GetListAsync<IpPoolModel>("/rest/ip/pool");
+        public Task<List<IpPoolModel>> GetAllAsync()
+            => _client.GetAsync<List<IpPoolModel>>("/rest/ip/pool");
 
-        // Atualiza o nome ou o intervalo de IPs
-        public async Task UpdateAsync(string id, string name, string ranges) =>
-            await _client.PatchAsync($"/rest/ip/pool/{id}", new { name, ranges });
+        public Task AddAsync(string name, string ranges)
+            => _client.PutAsync("/rest/ip/pool", new Dictionary<string, string>
+            {
+                ["name"] = name,
+                ["ranges"] = ranges
+            });
+
+        public Task UpdateAsync(string id, string name, string ranges)
+            => _client.PatchAsync($"/rest/ip/pool/{id}", new Dictionary<string, string>
+            {
+                ["name"] = name,
+                ["ranges"] = ranges
+            });
+
+        public Task DeleteAsync(string id)
+            => _client.DeleteAsync($"/rest/ip/pool/{id}");
     }
 }
