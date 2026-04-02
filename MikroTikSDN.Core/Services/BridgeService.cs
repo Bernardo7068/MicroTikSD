@@ -56,5 +56,11 @@ namespace MikroTikSDN.Core.Services
 
         public Task DeleteBridgePortAsync(string id)
             => _client.DeleteAsync($"/rest/interface/bridge/port/{id}");
+
+        public Task SetBridgeStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/interface/bridge/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
+
+        public Task SetPortStateAsync(string id, bool disabled) =>
+            _client.PatchAsync($"/rest/interface/bridge/port/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
     }
 }

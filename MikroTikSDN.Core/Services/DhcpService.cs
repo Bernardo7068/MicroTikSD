@@ -33,6 +33,9 @@ namespace MikroTikSDN.Core.Services
         public Task DeleteServerAsync(string id)
             => _client.DeleteAsync($"/rest/ip/dhcp-server/{id}");
 
+        public Task SetServerStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/ip/dhcp-server/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
+
         // ─── DHCP Client ──────────────────────────────────────────────────────
 
         public Task<List<DhcpClientModel>> GetClientsAsync()
@@ -57,5 +60,10 @@ namespace MikroTikSDN.Core.Services
 
         public Task DeleteClientAsync(string id)
             => _client.DeleteAsync($"/rest/ip/dhcp-client/{id}");
+
+
+        public Task SetClientStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/ip/dhcp-client/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
+
     }
 }

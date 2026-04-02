@@ -21,5 +21,6 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("address")] public string? Address { get; set; }
         [JsonPropertyName("use-peer-dns")] public string? UsePeerDns { get; set; }
         [JsonPropertyName("add-default-route")] public string? AddDefaultRoute { get; set; }
+        [JsonPropertyName("disabled")] public string? Disabled { get; set; }
     }
 }

@@ -11,15 +11,15 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 // Aliases para evitar conflitos de nomes com System.Net.NetworkInformation
-using RouterBridge = MikroTikSDN.Core.Models.BridgeModel;
-using RouterBridgePort = MikroTikSDN.Core.Models.BridgePortModel;
-using RouterDevice = MikroTikSDN.Core.Models.RouterDevice;
-using RouterDhcp = MikroTikSDN.Core.Models.DhcpModel;
-using RouterIpAddress = MikroTikSDN.Core.Models.IpAddressModel;
-using RouterNetInterface = MikroTikSDN.Core.Models.NetworkInterface;
-using RouterRoute = MikroTikSDN.Core.Models.StaticRouteModel;
-using RouterSecProfile = MikroTikSDN.Core.Models.SecurityProfile;
-using RouterWireless = MikroTikSDN.Core.Models.WirelessInterface;
+using RouterBridge      = MikroTikSDN.Core.Models.BridgeModel;
+using RouterBridgePort  = MikroTikSDN.Core.Models.BridgePortModel;
+using RouterDevice      = MikroTikSDN.Core.Models.RouterDevice;
+using RouterDhcp        = MikroTikSDN.Core.Models.DhcpModel;
+using RouterIpAddress   = MikroTikSDN.Core.Models.IpAddressModel;
+using RouterNetInterface= MikroTikSDN.Core.Models.NetworkInterface;
+using RouterRoute       = MikroTikSDN.Core.Models.StaticRouteModel;
+using RouterSecProfile  = MikroTikSDN.Core.Models.SecurityProfile;
+using RouterWireless    = MikroTikSDN.Core.Models.WirelessInterface;
 
 namespace MikroTikSDN.UI
 {
@@ -32,9 +32,9 @@ namespace MikroTikSDN.UI
         private string _currentTag = "iface";
 
         // Sub-vistas (estilo WinBox — alternar entre listas dentro da mesma secção)
-        private bool _showBridgePorts = false;
+        private bool _showBridgePorts      = false;
         private bool _showWirelessProfiles = false;
-        private bool _showDhcpClient = false;
+        private bool _showDhcpClient       = false;
 
         // ─── Construtor ───────────────────────────────────────────────────────
 
@@ -57,11 +57,11 @@ namespace MikroTikSDN.UI
                 if (c is Button b) { b.ForeColor = Color.Silver; b.BackColor = Color.Transparent; }
             btn.ForeColor = Color.FromArgb(124, 106, 247);
 
-            _currentTag = btn.Tag?.ToString() ?? "iface";
-            _showBridgePorts = false;
-            _showWirelessProfiles = false;
-            _showDhcpClient = false;
-            lblSectionTitle.Text = GetSectionTitle(_currentTag);
+            _currentTag            = btn.Tag?.ToString() ?? "iface";
+            _showBridgePorts       = false;
+            _showWirelessProfiles  = false;
+            _showDhcpClient        = false;
+            lblSectionTitle.Text   = GetSectionTitle(_currentTag);
 
             await LoadSectionAsync(_currentTag);
         }
@@ -78,15 +78,15 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "wifi":
-                        _showWirelessProfiles = !_showWirelessProfiles;
-                        lblSectionTitle.Text = _showWirelessProfiles ? "Wireless - Perfis" : "Wireless - Interfaces";
+                        _showWirelessProfiles  = !_showWirelessProfiles;
+                        lblSectionTitle.Text   = _showWirelessProfiles ? "Wireless - Perfis" : "Wireless - Interfaces";
                         break;
                     case "bridge":
-                        _showBridgePorts = !_showBridgePorts;
+                        _showBridgePorts     = !_showBridgePorts;
                         lblSectionTitle.Text = _showBridgePorts ? "Bridge - Portas" : "Bridge - Lista";
                         break;
                     case "dhcp":
-                        _showDhcpClient = !_showDhcpClient;
+                        _showDhcpClient      = !_showDhcpClient;
                         lblSectionTitle.Text = _showDhcpClient ? "DHCP - Clients" : "DHCP - Servers";
                         break;
                     case "dns":
@@ -112,102 +112,144 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "bridge":
-                        if (_showBridgePorts)
-                        {
-                            var bridges = await svc.Bridges.GetBridgesAsync();
-                            var eths = await svc.Interfaces.GetAllAsync();
-                            using var d = new CrudDialog("Nova Porta de Bridge",
-                                ("Interface", eths.Select(i => i.Name).ToArray()),
-                                ("Bridge", bridges.Select(b => b.Name).ToArray()),
-                                ("PVID", "1"));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Bridges.AddPortToBridgeAsync(d[1], d[0], d[2]);
-                        }
-                        else
-                        {
-                            using var d = new CrudDialog("Nova Bridge",
-                                ("Nome", "bridge1"),
-                                ("STP Protocol", new[] { "rstp", "stp", "mstp", "none" }),
-                                ("VLAN Filtering", new[] { "no", "yes" }));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Bridges.AddBridgeAsync(d[0], d[1], d[2] == "yes");
+                        { // Chaves para isolar o scope
+                            if (_showBridgePorts)
+                            {
+                                var bridges = await svc.Bridges.GetBridgesAsync();
+                                var eths = await svc.Interfaces.GetAllAsync();
+                                using var d = new CrudDialog("Nova Porta de Bridge",
+                                    ("Interface", eths.Select(i => i.Name).ToArray()),
+                                    ("Bridge", bridges.Select(b => b.Name).ToArray()),
+                                    ("PVID", "1"));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Bridges.AddPortToBridgeAsync(d[1], d[0], d[2]);
+                            }
+                            else
+                            {
+                                using var d = new CrudDialog("Nova Bridge",
+                                    ("Nome", "bridge1"),
+                                    ("STP Protocol", new[] { "rstp", "stp", "mstp", "none" }),
+                                    ("VLAN Filtering", new[] { "no", "yes" }));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Bridges.AddBridgeAsync(d[0], d[1], d[2] == "yes");
+                            }
                         }
                         break;
 
                     case "wifi":
-                        if (_showWirelessProfiles)
                         {
-                            using var d = new CrudDialog("Novo Perfil WiFi",
-                                ("Nome", "perfil1"),
-                                ("Auth Types", new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
-                                ("Ciphers", new[] { "aes-ccm", "tkip,aes-ccm" }),
-                                ("Password", ""));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Wireless.AddProfileAsync(d[0], d[1], d[2], d[3]);
-                        }
-                        else
-                        {
-                            var wlans = await svc.Wireless.GetWirelessAsync();
-                            var masters = wlans.Where(w => string.IsNullOrEmpty(w.MasterInterface))
-                                               .Select(w => w.Name).ToArray();
-                            using var d = new CrudDialog("Nova Interface Virtual (VAP)",
-                                ("Master Interface", masters),
-                                ("SSID", "WiFi-Guest"),
-                                ("Security Profile", "default"));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Wireless.AddVirtualInterfaceAsync(d[0], d[1], d[2]);
+                            if (_showWirelessProfiles)
+                            {
+                                using var d = new CrudDialog("Novo Perfil WiFi",
+                                    ("Nome", "perfil1"),
+                                    ("Auth Types", new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
+                                    ("Ciphers", new[] { "aes-ccm", "tkip,aes-ccm" }),
+                                    ("Password", ""));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Wireless.AddProfileAsync(d[0], d[1], d[2], d[3]);
+                            }
+                            else
+                            {
+                                var wlans = await svc.Wireless.GetWirelessAsync();
+                                var masters = wlans.Where(w => string.IsNullOrEmpty(w.MasterInterface))
+                                                   .Select(w => w.Name).ToArray();
+                                using var d = new CrudDialog("Nova Interface Virtual (VAP)",
+                                    ("Master Interface", masters),
+                                    ("SSID", "WiFi-Guest"),
+                                    ("Security Profile", "default"));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Wireless.AddVirtualInterfaceAsync(d[0], d[1], d[2]);
+                            }
                         }
                         break;
 
                     case "ip":
-                        var ifacesIP = await svc.Interfaces.GetAllAsync();
-                        using (var d = new CrudDialog("Novo Endereço IP",
-                            ("Endereço/CIDR", "192.168.88.1/24"),
-                            ("Interface", ifacesIP.Select(i => i.Name).ToArray())))
                         {
+                            var ifacesIP = await svc.Interfaces.GetAllAsync();
+                            using var d = new CrudDialog("Novo Endereço IP",
+                                ("Endereço/CIDR", "192.168.88.1/24"),
+                                ("Interface", ifacesIP.Select(i => i.Name).ToArray()));
                             if (d.ShowDialog(this) == DialogResult.OK)
                                 await svc.IpAddresses.AddAddressAsync(d[0], d[1]);
                         }
                         break;
 
                     case "route":
-                        using (var d = new CrudDialog("Nova Rota Estática",
-                            ("Destino (ex: 0.0.0.0/0)", "0.0.0.0/0"),
-                            ("Gateway", ""),
-                            ("Distância", "1")))
                         {
+                            using var d = new CrudDialog("Nova Rota Estática",
+                                ("Destino (ex: 0.0.0.0/0)", "0.0.0.0/0"),
+                                ("Gateway", ""),
+                                ("Distância", "1"));
                             if (d.ShowDialog(this) == DialogResult.OK)
                                 await svc.Routes.AddRouteAsync(d[0], d[1], d[2]);
                         }
                         break;
 
                     case "dhcp":
-                        var ifacesDhcp = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
-                        if (_showDhcpClient)
                         {
-                            using var d = new CrudDialog("Novo DHCP Client",
-                                ("Interface", ifacesDhcp),
-                                ("Usar DNS do ISP", new[] { "yes", "no" }),
-                                ("Adicionar Rota Def.", new[] { "yes", "no" }));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Dhcp.AddClientAsync(d[0], d[1] == "yes", d[2] == "yes");
-                        }
-                        else
-                        {
-                            var pools = (await svc.IpPools.GetAllAsync()).Select(p => p.Name).ToList();
-                            pools.Insert(0, "static-only");
-                            using var d = new CrudDialog("Novo DHCP Server",
-                                ("Nome", "dhcp1"),
-                                ("Interface", ifacesDhcp),
-                                ("Address Pool", pools.ToArray()));
-                            if (d.ShowDialog(this) == DialogResult.OK)
-                                await svc.Dhcp.AddServerAsync(d[0], d[1], d[2]);
+                            var ifacesDhcp = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
+                            if (_showDhcpClient)
+                            {
+                                using var d = new CrudDialog("Novo DHCP Client",
+                                    ("Interface", ifacesDhcp),
+                                    ("Usar DNS do ISP", new[] { "yes", "no" }),
+                                    ("Adicionar Rota Def.", new[] { "yes", "no" }));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Dhcp.AddClientAsync(d[0], d[1] == "yes", d[2] == "yes");
+                            }
+                            else
+                            {
+                                var pools = (await svc.IpPools.GetAllAsync()).Select(p => p.Name).ToList();
+                                pools.Insert(0, "static-only");
+                                using var d = new CrudDialog("Novo DHCP Server",
+                                    ("Nome", "dhcp1"),
+                                    ("Interface", ifacesDhcp),
+                                    ("Address Pool", pools.ToArray()));
+                                if (d.ShowDialog(this) == DialogResult.OK)
+                                    await svc.Dhcp.AddServerAsync(d[0], d[1], d[2]);
+                            }
                         }
                         break;
                 }
 
                 await LoadSectionAsync(_currentTag);
                 SetStatus("✅ Adicionado com sucesso!");
+            }
+            catch (Exception ex) { SetStatus($"❌ Erro: {ex.Message}", true); }
+        }
+
+        private async void BtnToggle_Click(object sender, EventArgs e)
+        {
+            if (_current == null || _dgvData.SelectedRows.Count == 0) return;
+
+            var svc = _current.Services;
+            var item = _dgvData.SelectedRows[0].DataBoundItem;
+            string id = (item as dynamic).Id;
+
+            // Verifica o estado atual (MikroTik envia "true"/"false" ou "yes"/"no")
+            string val = (item as dynamic).Disabled?.ToString().ToLower() ?? "false";
+            bool isCurrentlyDisabled = val == "true" || val == "yes";
+
+            try
+            {
+                SetStatus("A processar...");
+                switch (_currentTag)
+                {
+                    case "iface": await svc.Interfaces.SetStateAsync(id, !isCurrentlyDisabled); break;
+                    case "wifi": await svc.Wireless.SetStateAsync(id, !isCurrentlyDisabled); break;
+                    case "ip": await svc.IpAddresses.SetStateAsync(id, !isCurrentlyDisabled); break;
+                    case "route": await svc.Routes.SetStateAsync(id, !isCurrentlyDisabled); break;
+                    case "bridge":
+                        if (_showBridgePorts) await svc.Bridges.SetPortStateAsync(id, !isCurrentlyDisabled);
+                        else await svc.Bridges.SetBridgeStateAsync(id, !isCurrentlyDisabled);
+                        break;
+                    case "dhcp":
+                        if (_showDhcpClient) await svc.Dhcp.SetClientStateAsync(id, !isCurrentlyDisabled);
+                        else await svc.Dhcp.SetServerStateAsync(id, !isCurrentlyDisabled);
+                        break;
+                }
+                await LoadSectionAsync(_currentTag);
+                SetStatus(isCurrentlyDisabled ? "🟢 Ativado" : "🔴 Desativado");
             }
             catch (Exception ex) { SetStatus($"❌ Erro: {ex.Message}", true); }
         }
@@ -280,11 +322,11 @@ namespace MikroTikSDN.UI
                             await svc.IpAddresses.DeleteAddressAsync(id); break;
                         case "bridge":
                             if (_showBridgePorts) await svc.Bridges.DeleteBridgePortAsync(id);
-                            else await svc.Bridges.DeleteBridgeAsync(id);
+                            else                  await svc.Bridges.DeleteBridgeAsync(id);
                             break;
                         case "dhcp":
                             if (_showDhcpClient) await svc.Dhcp.DeleteClientAsync(id);
-                            else await svc.Dhcp.DeleteServerAsync(id);
+                            else                 await svc.Dhcp.DeleteServerAsync(id);
                             break;
                         case "route":
                             await svc.Routes.DeleteRouteAsync(id); break;
@@ -310,22 +352,19 @@ namespace MikroTikSDN.UI
                 var svc = _current.Services;
                 switch (tag)
                 {
-                    case "iface": _dgvData.DataSource = await svc.Interfaces.GetAllAsync(); break;
-                    case "wifi":
-                        _dgvData.DataSource = _showWirelessProfiles
+                    case "iface":  _dgvData.DataSource = await svc.Interfaces.GetAllAsync();     break;
+                    case "wifi":   _dgvData.DataSource = _showWirelessProfiles
                                        ? await svc.Wireless.GetProfilesAsync()
-                                       : await svc.Wireless.GetWirelessAsync(); break;
-                    case "bridge":
-                        _dgvData.DataSource = _showBridgePorts
+                                       : await svc.Wireless.GetWirelessAsync();                  break;
+                    case "bridge": _dgvData.DataSource = _showBridgePorts
                                        ? await svc.Bridges.GetPortsAsync()
-                                       : await svc.Bridges.GetBridgesAsync(); break;
-                    case "ip": _dgvData.DataSource = await svc.IpAddresses.GetAddressesAsync(); break;
-                    case "route": _dgvData.DataSource = await svc.Routes.GetRoutesAsync(); break;
-                    case "dhcp":
-                        _dgvData.DataSource = _showDhcpClient
+                                       : await svc.Bridges.GetBridgesAsync();                    break;
+                    case "ip":     _dgvData.DataSource = await svc.IpAddresses.GetAddressesAsync(); break;
+                    case "route":  _dgvData.DataSource = await svc.Routes.GetRoutesAsync();      break;
+                    case "dhcp":   _dgvData.DataSource = _showDhcpClient
                                        ? await svc.Dhcp.GetClientsAsync()
-                                       : await svc.Dhcp.GetServersAsync(); break;
-                    case "dns": await LoadDnsAsync(svc); break;
+                                       : await svc.Dhcp.GetServersAsync();                       break;
+                    case "dns":    await LoadDnsAsync(svc);                                       break;
                 }
 
                 FormatGridColumns(tag);
@@ -337,14 +376,14 @@ namespace MikroTikSDN.UI
         private async Task LoadDnsAsync(RouterServices svc)
         {
             var dns = await svc.Dns.GetSettingsAsync();
-            var dt = new DataTable();
+            var dt  = new DataTable();
             dt.Columns.Add("Propriedade");
             dt.Columns.Add("Valor");
-            dt.Rows.Add("Servidores DNS", dns.Servers ?? "—");
-            dt.Rows.Add("Pedidos Remotos", dns.AllowRemote ?? "—");
-            dt.Rows.Add("Cache Size (KiB)", dns.CacheSize ?? "—");
-            dt.Rows.Add("DoH Server", dns.UseDohServer ?? "—");
-            dt.Rows.Add("Dynamic Servers", dns.DynamicServers ?? "—");
+            dt.Rows.Add("Servidores DNS",    dns.Servers        ?? "—");
+            dt.Rows.Add("Pedidos Remotos",   dns.AllowRemote    ?? "—");
+            dt.Rows.Add("Cache Size (KiB)",  dns.CacheSize      ?? "—");
+            dt.Rows.Add("DoH Server",        dns.UseDohServer   ?? "—");
+            dt.Rows.Add("Dynamic Servers",   dns.DynamicServers ?? "—");
             _dgvData.DataSource = dt;
         }
 
@@ -358,34 +397,45 @@ namespace MikroTikSDN.UI
             try
             {
                 var dns = await svc.Dns.GetSettingsAsync();
-                var ifNames = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
 
+                // Removemos o campo do mDNS que estava a dar erro
                 using var d = new CrudDialog("Configurações DNS",
-                    ("Servers (ex: 8.8.8.8)", dns.Servers ?? ""),
+                    ("Servers (ex: 8.8.8.8, 1.1.1.1)", dns.Servers ?? ""),
                     ("DoH Server URL", dns.UseDohServer ?? ""),
-                    ("mDNS Repeater Interface", ifNames),
                     ("Cache Size (KiB)", dns.CacheSize ?? "2048"),
                     ("Max UDP Packet Size", dns.MaxUdpPacketSize ?? "4096"),
                     ("Pedidos Remotos (yes/no)", dns.AllowRemote ?? "no"));
 
                 if (d.ShowDialog(this) == DialogResult.OK)
                 {
-                    // CORRIGIDO: Dictionary com hífens corretos
-                    await svc.Dns.UpdateSettingsAsync(new Dictionary<string, string>
+                    // Criamos o dicionário apenas com o que o MikroTik aceita
+                    var updates = new Dictionary<string, string>
                     {
-                        ["servers"] = d[0],
-                        ["use-doh-server"] = d[1],
-                        ["mdns-repeater-interfaces"] = d[2],
-                        ["cache-size"] = d[3],
-                        ["max-udp-packet-size"] = d[4],
-                        ["allow-remote-requests"] = d[5]
-                    });
+                        ["servers"] = d[0].Trim(),
+                        ["use-doh-server"] = d[1].Trim(),
+                        ["cache-size"] = d[2].Trim(),
+                        ["max-udp-packet-size"] = d[3].Trim(),
+                        ["allow-remote-requests"] = d[4].Trim().ToLower()
+                    };
+
+                    // Se o DoH estiver vazio, apagamos a chave para não dar erro de URL inválido
+                    if (string.IsNullOrEmpty(updates["use-doh-server"]))
+                    {
+                        updates["use-doh-server"] = "";
+                    }
+
+                    SetStatus("A guardar DNS...");
+                    await svc.Dns.UpdateSettingsAsync(updates);
 
                     await LoadSectionAsync("dns");
-                    SetStatus("✅ DNS atualizado!");
+                    SetStatus("✅ DNS atualizado com sucesso!");
                 }
             }
-            catch (Exception ex) { SetStatus($"❌ Erro DNS: {ex.Message}", true); }
+            catch (Exception ex)
+            {
+                SetStatus($"❌ Erro DNS: {ex.Message}", true);
+                MessageBox.Show($"Detalhe do Erro:\n{ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // ─── Double-click para editar ─────────────────────────────────────────
@@ -395,7 +445,7 @@ namespace MikroTikSDN.UI
             if (e.RowIndex < 0) return;
 
             // CORRIGIDO: usa sempre _current.Services em vez de _client
-            var svc = _current.Services;
+            var svc  = _current.Services;
             var item = _dgvData.Rows[e.RowIndex].DataBoundItem;
             string id = (item as dynamic).Id;
 
@@ -406,11 +456,11 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "ip":
-                        var ipItem = (RouterIpAddress)item;
+                        var ipItem   = (RouterIpAddress)item;
                         var ifacesIP = await svc.Interfaces.GetAllAsync();
                         using (var d = new CrudDialog($"Editar IP: {ipItem.Address}",
-                            ("Endereço/CIDR", ipItem.Address ?? ""),
-                            ("Interface", ifacesIP.Select(i => i.Name).ToArray())))
+                            ("Endereço/CIDR", ipItem.Address   ?? ""),
+                            ("Interface",     ifacesIP.Select(i => i.Name).ToArray())))
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -424,12 +474,12 @@ namespace MikroTikSDN.UI
                         if (_showBridgePorts)
                         {
                             var portItem = (RouterBridgePort)item;
-                            var bList = await svc.Bridges.GetBridgesAsync();
-                            var iList = await svc.Interfaces.GetAllAsync();
-                            using var d = new CrudDialog($"Editar Porta: {portItem.Interface}",
+                            var bList    = await svc.Bridges.GetBridgesAsync();
+                            var iList    = await svc.Interfaces.GetAllAsync();
+                            using var d  = new CrudDialog($"Editar Porta: {portItem.Interface}",
                                 ("Interface", iList.Select(i => i.Name).ToArray()),
-                                ("Bridge", bList.Select(b => b.Name).ToArray()),
-                                ("PVID", portItem.Pvid ?? "1"));
+                                ("Bridge",    bList.Select(b => b.Name).ToArray()),
+                                ("PVID",      portItem.Pvid ?? "1"));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
                                 await svc.Bridges.UpdatePortAsync(id, d[1], d[0], d[2]);
@@ -455,10 +505,10 @@ namespace MikroTikSDN.UI
                         {
                             var profile = (RouterSecProfile)item;
                             using var d = new CrudDialog($"Editar Perfil: {profile.Name}",
-                                ("Nome", profile.Name ?? ""),
-                                ("Auth Types", new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
-                                ("Ciphers", new[] { "aes-ccm", "tkip,aes-ccm" }),
-                                ("Password", ""));
+                                ("Nome",      profile.Name ?? ""),
+                                ("Auth Types",new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
+                                ("Ciphers",   new[] { "aes-ccm", "tkip,aes-ccm" }),
+                                ("Password",  ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
                                 await svc.Wireless.UpdateProfileAsync(id, d[0], d[1], d[2], d[3]);
@@ -474,10 +524,10 @@ namespace MikroTikSDN.UI
                     case "route":
                         var route = (RouterRoute)item;
                         using (var d = new CrudDialog($"Editar Rota: {route.DstAddress}",
-                            ("Destino", route.DstAddress ?? "0.0.0.0/0"),
-                            ("Gateway", route.Gateway ?? ""),
-                            ("Distância", route.Distance ?? "1"),
-                            ("Comment", route.Comment ?? "")))
+                            ("Destino",   route.DstAddress ?? "0.0.0.0/0"),
+                            ("Gateway",   route.Gateway    ?? ""),
+                            ("Distância", route.Distance   ?? "1"),
+                            ("Comment",   route.Comment    ?? "")))
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -495,7 +545,7 @@ namespace MikroTikSDN.UI
                             var c = (DhcpClientModel)item;
                             using var d = new CrudDialog("Editar DHCP Client",
                                 ("Interface", allIfaces),
-                                ("Usar DNS", new[] { "yes", "no" }),
+                                ("Usar DNS",  new[] { "yes", "no" }),
                                 ("Rota Def.", new[] { "yes", "no" }));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -505,13 +555,13 @@ namespace MikroTikSDN.UI
                         }
                         else
                         {
-                            var s = (RouterDhcp)item;
-                            var pools = await svc.IpPools.GetAllAsync();
-                            var poolReal = pools.FirstOrDefault(p => p.Name == s.AddressPool);
+                            var s       = (RouterDhcp)item;
+                            var pools   = await svc.IpPools.GetAllAsync();
+                            var poolReal= pools.FirstOrDefault(p => p.Name == s.AddressPool);
                             using var d = new CrudDialog("Editar DHCP Server",
-                                ("Nome", s.Name ?? ""),
+                                ("Nome",      s.Name ?? ""),
                                 ("Interface", allIfaces),
-                                ("Pool", pools.Select(p => p.Name).ToArray()),
+                                ("Pool",      pools.Select(p => p.Name).ToArray()),
                                 ("IP Ranges", poolReal?.Ranges ?? ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -537,31 +587,31 @@ namespace MikroTikSDN.UI
 
         private async Task EditarWirelessAsync(RouterWireless wlan)
         {
-            var svc = _current.Services;
+            var svc      = _current.Services;
             var profiles = await svc.Wireless.GetProfilesAsync();
-            var profNames = profiles.Select(p => p.Name).DefaultIfEmpty("default").ToArray();
+            var profNames= profiles.Select(p => p.Name).DefaultIfEmpty("default").ToArray();
 
             using var d = new CrudDialog($"Wireless — {wlan.Name}",
-                ("Mode", new[] { "ap-bridge", "station", "bridge", "station-bridge" }),
-                ("Band", new[] { "2ghz-b/g/n", "5ghz-a/n/ac", "2ghz-onlyn", "5ghz-onlyac" }),
-                ("Channel Width", new[] { "20mhz", "20/40mhz-XX", "20/40mhz-Ce", "20/40mhz-eC" }),
-                ("Frequency", wlan.Frequency ?? "auto"),
-                ("SSID", wlan.Ssid ?? "MikroTik"),
-                ("Security Profile", profNames),
-                ("Country", new[] { "portugal", "brazil", "spain", "etsi" }));
+                ("Mode",            new[] { "ap-bridge", "station", "bridge", "station-bridge" }),
+                ("Band",            new[] { "2ghz-b/g/n", "5ghz-a/n/ac", "2ghz-onlyn", "5ghz-onlyac" }),
+                ("Channel Width",   new[] { "20mhz", "20/40mhz-XX", "20/40mhz-Ce", "20/40mhz-eC" }),
+                ("Frequency",       wlan.Frequency  ?? "auto"),
+                ("SSID",            wlan.Ssid       ?? "MikroTik"),
+                ("Security Profile",profNames),
+                ("Country",         new[] { "portugal", "brazil", "spain", "etsi" }));
 
             if (d.ShowDialog(this) == DialogResult.OK)
             {
                 // CORRIGIDO: Dictionary com hífens corretos (sem @channel_width, @security_profile)
                 await svc.Wireless.UpdateInterfaceAsync(wlan.Id!, new Dictionary<string, string>
                 {
-                    ["mode"] = d[0],
-                    ["band"] = d[1],
-                    ["channel-width"] = d[2],
-                    ["frequency"] = d[3],
-                    ["ssid"] = d[4],
+                    ["mode"]             = d[0],
+                    ["band"]             = d[1],
+                    ["channel-width"]    = d[2],
+                    ["frequency"]        = d[3],
+                    ["ssid"]             = d[4],
                     ["security-profile"] = d[5],
-                    ["country"] = d[6]
+                    ["country"]          = d[6]
                 });
 
                 await LoadSectionAsync("wifi");
@@ -578,20 +628,20 @@ namespace MikroTikSDN.UI
 
             var names = new Dictionary<string, string>
             {
-                ["MacAddress"] = "MAC",
-                ["Ssid"] = "Rede (SSID)",
-                ["Address"] = "Endereço IP",
-                ["Network"] = "Rede",
-                ["Interface"] = "Interface",
-                ["Running"] = "Ativo",
-                ["Disabled"] = "Desativado",
-                ["DstAddress"] = "Destino",
-                ["Gateway"] = "Gateway",
-                ["Distance"] = "Distância",
+                ["MacAddress"]      = "MAC",
+                ["Ssid"]            = "Rede (SSID)",
+                ["Address"]         = "Endereço IP",
+                ["Network"]         = "Rede",
+                ["Interface"]       = "Interface",
+                ["Running"]         = "Ativo",
+                ["Disabled"]        = "Desativado",
+                ["DstAddress"]      = "Destino",
+                ["Gateway"]         = "Gateway",
+                ["Distance"]        = "Distância",
                 ["SecurityProfile"] = "Perfil Seg.",
-                ["AddressPool"] = "Pool",
+                ["AddressPool"]     = "Pool",
                 ["MasterInterface"] = "Master",
-                ["AuthTypes"] = "Auth Types"
+                ["AuthTypes"]       = "Auth Types"
             };
 
             foreach (DataGridViewColumn col in _dgvData.Columns)
@@ -602,35 +652,36 @@ namespace MikroTikSDN.UI
 
         private void UpdateToolbarForSection(string tag)
         {
-            _btnAdd.Visible = tag != "iface";
-            _btnDelete.Visible = tag != "iface";
+            _btnAdd.Visible = tag != "iface" && tag != "dns";
+            _btnDelete.Visible = tag != "iface" && tag != "dns";
             _btnAction.Visible = tag is "bridge" or "wifi" or "dhcp" or "dns";
+
+            // O botão de Ativar/Desativar deve estar visível em quase tudo
+            _btnToggle.Visible = tag is "iface" or "wifi" or "bridge" or "ip" or "dhcp" or "route";
 
             _btnAdd.Text = tag switch
             {
-                "wifi" => _showWirelessProfiles ? "➕ Novo Perfil" : "➕ Nova VAP",
-                "bridge" => _showBridgePorts ? "➕ Nova Porta" : "➕ Nova Bridge",
-                "dhcp" => _showDhcpClient ? "➕ Novo Client" : "➕ Novo Server",
-                "ip" => "➕ Novo Endereço IP",
-                "route" => "➕ Nova Rota",
+                "wifi" => _showWirelessProfiles ? "➕ Perfil" : "➕ VAP",
+                "bridge" => _showBridgePorts ? "➕ Porta" : "➕ Bridge",
+                "dhcp" => _showDhcpClient ? "➕ Client" : "➕ Server",
+                "ip" => "➕ IP",
+                "route" => "➕ Rota",
                 _ => "➕ Adicionar"
             };
 
             _btnDelete.Text = "🗑️ Remover";
+            _btnToggle.Text = "⚡ Ativar/Desativar";
 
             if (tag == "dns")
             {
-                _btnAdd.Visible = false;
-                _btnDelete.Visible = true;
-                _btnDelete.Text = "⚡ Ativar/Desativar";
                 _btnAction.Text = "⚙️ Configurar DNS";
             }
             else if (tag == "bridge")
-                _btnAction.Text = _showBridgePorts ? "🌉 Ver Bridges" : "🔌 Ver Portas";
+                _btnAction.Text = _showBridgePorts ? "🌉 Bridges" : "🔌 Portas";
             else if (tag == "wifi")
-                _btnAction.Text = _showWirelessProfiles ? "🌐 Ver Wireless" : "🔐 Ver Perfis";
+                _btnAction.Text = _showWirelessProfiles ? "🌐 Wireless" : "🔐 Perfis";
             else if (tag == "dhcp")
-                _btnAction.Text = _showDhcpClient ? "🖥️ Ver Servers" : "🌐 Ver Clients";
+                _btnAction.Text = _showDhcpClient ? "🖥️ Servers" : "🌐 Clients";
         }
 
         // ─── Gestão de sessões e routers ──────────────────────────────────────
@@ -648,7 +699,7 @@ namespace MikroTikSDN.UI
         {
             if (_cmbRouters.SelectedItem is not string item) return;
             int start = item.LastIndexOf('(') + 1;
-            int end = item.LastIndexOf(')');
+            int end   = item.LastIndexOf(')');
             if (start > 0 && end > start)
             {
                 SwitchRouter(item.Substring(start, end - start));
@@ -666,7 +717,7 @@ namespace MikroTikSDN.UI
         private void SwitchRouter(string ip)
         {
             if (!_sessions.TryGetValue(ip, out var s)) return;
-            _current = s;
+            _current           = s;
             lblRouterInfo.Text = $"— {s.Device.Name} ({ip})";
         }
 
@@ -681,20 +732,20 @@ namespace MikroTikSDN.UI
 
         private void SetStatus(string msg, bool error = false)
         {
-            lblStatus.Text = msg;
+            lblStatus.Text      = msg;
             lblStatus.ForeColor = error ? Color.Salmon : Color.Gray;
         }
 
         private static string GetSectionTitle(string tag) => tag switch
         {
-            "iface" => "Interfaces",
+            "iface"  => "Interfaces",
             "bridge" => "Bridge",
-            "wifi" => "Wireless",
-            "ip" => "Endereços IP",
-            "dhcp" => "DHCP",
-            "dns" => "DNS Settings",
-            "route" => "Rotas Estáticas",
-            _ => "Rede"
+            "wifi"   => "Wireless",
+            "ip"     => "Endereços IP",
+            "dhcp"   => "DHCP",
+            "dns"    => "DNS Settings",
+            "route"  => "Rotas Estáticas",
+            _        => "Rede"
         };
     }
 
@@ -702,39 +753,39 @@ namespace MikroTikSDN.UI
 
     public class RouterSession
     {
-        public RouterClient Client { get; }
-        public RouterDevice Device { get; }
+        public RouterClient   Client   { get; }
+        public RouterDevice   Device   { get; }
         public RouterServices Services { get; }
 
         public RouterSession(RouterClient c, RouterDevice d)
         {
-            Client = c;
-            Device = d;
+            Client   = c;
+            Device   = d;
             Services = new RouterServices(c);
         }
     }
 
     public class RouterServices
     {
-        public InterfaceService Interfaces { get; }
-        public WirelessService Wireless { get; }
-        public IpAddressService IpAddresses { get; }
-        public BridgeService Bridges { get; }
-        public RouteService Routes { get; }
-        public DhcpService Dhcp { get; }
-        public DnsService Dns { get; }
-        public IpPoolService IpPools { get; }
+        public InterfaceService  Interfaces  { get; }
+        public WirelessService   Wireless    { get; }
+        public IpAddressService  IpAddresses { get; }
+        public BridgeService     Bridges     { get; }
+        public RouteService      Routes      { get; }
+        public DhcpService       Dhcp        { get; }
+        public DnsService        Dns         { get; }
+        public IpPoolService     IpPools     { get; }
 
         public RouterServices(RouterClient c)
         {
-            Interfaces = new InterfaceService(c);
-            Wireless = new WirelessService(c);
+            Interfaces  = new InterfaceService(c);
+            Wireless    = new WirelessService(c);
             IpAddresses = new IpAddressService(c);
-            Bridges = new BridgeService(c);
-            Routes = new RouteService(c);
-            Dhcp = new DhcpService(c);
-            Dns = new DnsService(c);
-            IpPools = new IpPoolService(c);
+            Bridges     = new BridgeService(c);
+            Routes      = new RouteService(c);
+            Dhcp        = new DhcpService(c);
+            Dns         = new DnsService(c);
+            IpPools     = new IpPoolService(c);
         }
     }
 }

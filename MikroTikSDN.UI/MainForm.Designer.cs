@@ -13,7 +13,7 @@ namespace MikroTikSDN.UI
         private System.Windows.Forms.Button _btnAddNewRouter;
 
         // Botões da toolbar de ações
-        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction;
+        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle;
 
         protected override void Dispose(bool disposing)
         {
@@ -161,15 +161,17 @@ namespace MikroTikSDN.UI
 
             _btnAdd = MakeToolbarBtn("＋ Adicionar", accent, 0);
             _btnDelete = MakeToolbarBtn("🗑 Apagar", danger, 130);
-            _btnAction = MakeToolbarBtn("⚡ Ação", success, 260);
-            _btnRefresh = MakeToolbarBtn("↻ Atualizar", bgItem, 390);
+            _btnToggle = MakeToolbarBtn("⚡ Toggle", success, 260);    // Novo
+            _btnAction = MakeToolbarBtn("🛠 Sub-Menu", bgItem, 390); // Mudei a cor e posição
+            _btnRefresh = MakeToolbarBtn("↻ Atualizar", bgItem, 520);
 
             _btnAdd.Click += BtnAdd_Click;
             _btnDelete.Click += BtnDelete_Click;
             _btnAction.Click += BtnAction_Click;
             _btnRefresh.Click += BtnRefresh_Click;
+            _btnToggle.Click += BtnToggle_Click;
 
-            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnAction, _btnRefresh });
+            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnToggle, _btnAction, _btnRefresh });
 
             // ── DataGrid ──────────────────────────────────────────────────────
             _dgvData = new DataGridView

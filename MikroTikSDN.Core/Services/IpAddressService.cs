@@ -28,5 +28,8 @@ namespace MikroTikSDN.Core.Services
 
         public Task DeleteAddressAsync(string id)
             => _client.DeleteAsync($"/rest/ip/address/{id}");
+
+        public Task SetStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/ip/address/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
     }
 }

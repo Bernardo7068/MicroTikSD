@@ -16,5 +16,8 @@ namespace MikroTikSDN.Core.Services
         // ADICIONA ESTE MÉTODO PARA PODERES APAGAR AS VIRTUAIS:
         public async Task DeleteInterfaceAsync(string id) =>
             await _client.DeleteAsync($"/rest/interface/{id}");
+
+        public Task SetStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/interface/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
     }
 }

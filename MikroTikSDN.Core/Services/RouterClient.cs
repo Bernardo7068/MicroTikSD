@@ -13,8 +13,10 @@ using System.Threading.Tasks;
 namespace MikroTikSDN.Core.Services
 {
     public class RouterClient : IDisposable
+
     {
         private readonly HttpClient _httpClient;
+
 
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -37,6 +39,21 @@ namespace MikroTikSDN.Core.Services
             var authString = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{device.Username}:{device.Password}"));
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authString);
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
+
+        public async Task PostAsync(string endpoint, object data)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(data);
+            var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            // Usa PostAsync em vez de PatchAsync
+            var response = await _httpClient.PostAsync(endpoint, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new System.Exception(error);
+            }
         }
 
         public async Task<T> GetAsync<T>(string endpoint)

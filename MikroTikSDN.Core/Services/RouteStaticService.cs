@@ -32,5 +32,8 @@ namespace MikroTikSDN.Core.Services
 
         public Task DeleteRouteAsync(string id)
             => _client.DeleteAsync($"/rest/ip/route/{id}");
+
+        public Task SetStateAsync(string id, bool disabled) =>
+    _client.PatchAsync($"/rest/ip/route/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
     }
 }
