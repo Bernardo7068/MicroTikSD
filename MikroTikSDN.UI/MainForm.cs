@@ -187,26 +187,94 @@ namespace MikroTikSDN.UI
 
                     case "dhcp":
                         {
+                            
                             var ifacesDhcp = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
+
                             if (_showDhcpClient)
                             {
+                                // --- DHCP CLIENT (Mantém-se igual) ---
                                 using var d = new CrudDialog("Novo DHCP Client",
                                     ("Interface", ifacesDhcp),
                                     ("Usar DNS do ISP", new[] { "yes", "no" }),
                                     ("Adicionar Rota Def.", new[] { "yes", "no" }));
+
                                 if (d.ShowDialog(this) == DialogResult.OK)
-                                    await svc.Dhcp.AddClientAsync(d[0], d[1] == "yes", d[2] == "yes");
+                                {
+                                    SetStatus("A criar DHCP Client...");
+                                    try
+                                    {
+                                        await svc.Dhcp.AddClientAsync(d[0], d[1] == "yes", d[2] == "yes");
+                                        SetStatus("✅ DHCP Client criado com sucesso!");
+                                        await LoadSectionAsync("dhcp");
+                                    }
+                                    catch (Exception ex) { SetStatus($"❌ Erro: {ex.Message}", true); }
+                                }
                             }
                             else
                             {
-                                var pools = (await svc.IpPools.GetAllAsync()).Select(p => p.Name).ToList();
-                                pools.Insert(0, "static-only");
-                                using var d = new CrudDialog("Novo DHCP Server",
-                                    ("Nome", "dhcp1"),
+                                // --- DHCP SERVER WIZARD (O Novo Winbox Setup) ---
+
+                                // PASSO 1: Pedir Interface e Rede
+                                using var d1 = new CrudDialog("DHCP Setup (1/2)",
+                                    ("Nome do Servidor", "dhcp1"),
                                     ("Interface", ifacesDhcp),
-                                    ("Address Pool", pools.ToArray()));
-                                if (d.ShowDialog(this) == DialogResult.OK)
-                                    await svc.Dhcp.AddServerAsync(d[0], d[1], d[2]);
+                                    ("DHCP Address Space (ex: 192.168.88.0/24)", ""));
+
+                                if (d1.ShowDialog(this) == DialogResult.OK)
+                                {
+                                    string serverName = d1[0].Trim();
+                                    string iface = d1[1].Trim();
+                                    string network = d1[2].Trim();
+
+                                    // Matemática de IPs: Tentamos adivinhar a rede para sugerir ao utilizador
+                                    string baseIp = "";
+                                    if (network.Contains("/") && network.Contains("."))
+                                    {
+                                        string ipPart = network.Split('/')[0];
+                                        int lastDot = ipPart.LastIndexOf('.');
+                                        if (lastDot > 0) baseIp = ipPart.Substring(0, lastDot);
+                                    }
+
+                                    // Se ele meteu 192.168.88.0/24, a base é "192.168.88"
+                                    string sugeridoGateway = baseIp != "" ? $"{baseIp}.1" : "";
+                                    string sugeridoRange = baseIp != "" ? $"{baseIp}.2-{baseIp}.254" : "";
+
+                                    // PASSO 2: Mostrar sugestões e deixar o utilizador alterar o que quiser
+                                    using var d2 = new CrudDialog("DHCP Setup (2/2)",
+                                        ("Gateway for DHCP Network", sugeridoGateway),
+                                        ("Addresses to Give Out", sugeridoRange),
+                                        ("DNS Servers (opcional)", sugeridoGateway)); // Sugere o Gateway como DNS
+
+                                    if (d2.ShowDialog(this) == DialogResult.OK)
+                                    {
+                                        string gateway = d2[0].Trim();
+                                        string ipRange = d2[1].Trim();
+                                        string dnsServer = d2[2].Trim();
+                                        string poolName = $"pool-{serverName}";
+
+                                        SetStatus("A configurar DHCP completo...");
+
+                                        try
+                                        {
+                                            // 1. Criar a Pool (Range de IPs)
+                                            await svc.IpPools.AddAsync(poolName, ipRange);
+
+                                            // 2. Criar a Network (Gateway e DNS)
+                                            await svc.Dhcp.AddNetworkAsync(network, gateway, dnsServer);
+
+                                            // 3. Criar o Servidor (Ligar tudo à Interface)
+                                            await svc.Dhcp.AddServerAsync(serverName, iface, poolName);
+
+                                            SetStatus("✅ DHCP Setup concluído com sucesso!");
+                                            await LoadSectionAsync("dhcp");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            SetStatus($"❌ Erro no Setup: {ex.Message}", true);
+                                            MessageBox.Show($"Detalhe:\n{ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        }
+                                    }
+                                }
                             }
                         }
                         break;
@@ -398,33 +466,29 @@ namespace MikroTikSDN.UI
             {
                 var dns = await svc.Dns.GetSettingsAsync();
 
-                // Removemos o campo do mDNS que estava a dar erro
                 using var d = new CrudDialog("Configurações DNS",
-                    ("Servers (ex: 8.8.8.8, 1.1.1.1)", dns.Servers ?? ""),
+                    ("Servers (ex: 8.8.8.8)", dns.Servers ?? ""),
                     ("DoH Server URL", dns.UseDohServer ?? ""),
                     ("Cache Size (KiB)", dns.CacheSize ?? "2048"),
                     ("Max UDP Packet Size", dns.MaxUdpPacketSize ?? "4096"),
-                    ("Pedidos Remotos (yes/no)", dns.AllowRemote ?? "no"));
+                    ("Pedidos Remotos", dns.AllowRemote ?? "no"));
 
                 if (d.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Criamos o dicionário apenas com o que o MikroTik aceita
+                    // Criamos o dicionário FORÇANDO o envio de todos os campos, 
+                    // mesmo que tenhas apagado o texto na janela.
                     var updates = new Dictionary<string, string>
                     {
                         ["servers"] = d[0].Trim(),
                         ["use-doh-server"] = d[1].Trim(),
-                        ["cache-size"] = d[2].Trim(),
-                        ["max-udp-packet-size"] = d[3].Trim(),
-                        ["allow-remote-requests"] = d[4].Trim().ToLower()
+                        ["cache-size"] = string.IsNullOrWhiteSpace(d[2]) ? "2048" : d[2].Trim(), // Proteção caso apagues os números
+                        ["max-udp-packet-size"] = string.IsNullOrWhiteSpace(d[3]) ? "4096" : d[3].Trim(),
+                        ["allow-remote-requests"] = d[4].Trim().ToLower() == "yes" ? "yes" : "no"
                     };
 
-                    // Se o DoH estiver vazio, apagamos a chave para não dar erro de URL inválido
-                    if (string.IsNullOrEmpty(updates["use-doh-server"]))
-                    {
-                        updates["use-doh-server"] = "";
-                    }
-
                     SetStatus("A guardar DNS...");
+
+                    // Vai direto para o DnsService e de lá para o MikroTik
                     await svc.Dns.UpdateSettingsAsync(updates);
 
                     await LoadSectionAsync("dns");
@@ -434,7 +498,7 @@ namespace MikroTikSDN.UI
             catch (Exception ex)
             {
                 SetStatus($"❌ Erro DNS: {ex.Message}", true);
-                MessageBox.Show($"Detalhe do Erro:\n{ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Erro ao guardar DNS:\n{ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -444,10 +508,8 @@ namespace MikroTikSDN.UI
         {
             if (e.RowIndex < 0) return;
 
-            // CORRIGIDO: usa sempre _current.Services em vez de _client
             var svc  = _current.Services;
             var item = _dgvData.Rows[e.RowIndex].DataBoundItem;
-            string id = (item as dynamic).Id;
 
             SetStatus("A carregar dados para edição...");
 
@@ -456,6 +518,7 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "ip":
+                        string idIp = (item as dynamic).Id;
                         var ipItem   = (RouterIpAddress)item;
                         var ifacesIP = await svc.Interfaces.GetAllAsync();
                         using (var d = new CrudDialog($"Editar IP: {ipItem.Address}",
@@ -464,13 +527,14 @@ namespace MikroTikSDN.UI
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.IpAddresses.UpdateAddressAsync(id, d[0], d[1]);
+                                await svc.IpAddresses.UpdateAddressAsync(idIp, d[0], d[1]);
                                 await LoadSectionAsync("ip");
                             }
                         }
                         break;
 
                     case "bridge":
+                        string idBridge = (item as dynamic).Id;
                         if (_showBridgePorts)
                         {
                             var portItem = (RouterBridgePort)item;
@@ -482,7 +546,7 @@ namespace MikroTikSDN.UI
                                 ("PVID",      portItem.Pvid ?? "1"));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Bridges.UpdatePortAsync(id, d[1], d[0], d[2]);
+                                await svc.Bridges.UpdatePortAsync(idBridge, d[1], d[0], d[2]);
                                 await LoadSectionAsync("bridge");
                             }
                         }
@@ -494,13 +558,14 @@ namespace MikroTikSDN.UI
                                 ("STP", new[] { "rstp", "stp", "mstp", "none" }));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Bridges.UpdateBridgeAsync(id, d[0], d[1]);
+                                await svc.Bridges.UpdateBridgeAsync(idBridge, d[0], d[1]);
                                 await LoadSectionAsync("bridge");
                             }
                         }
                         break;
 
                     case "wifi":
+                        string idWifi = (item as dynamic).Id;
                         if (_showWirelessProfiles)
                         {
                             var profile = (RouterSecProfile)item;
@@ -511,7 +576,7 @@ namespace MikroTikSDN.UI
                                 ("Password",  ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Wireless.UpdateProfileAsync(id, d[0], d[1], d[2], d[3]);
+                                await svc.Wireless.UpdateProfileAsync(idWifi, d[0], d[1], d[2], d[3]);
                                 await LoadSectionAsync("wifi");
                             }
                         }
@@ -522,6 +587,7 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "route":
+                        string idRoute = (item as dynamic).Id;
                         var route = (RouterRoute)item;
                         using (var d = new CrudDialog($"Editar Rota: {route.DstAddress}",
                             ("Destino",   route.DstAddress ?? "0.0.0.0/0"),
@@ -531,14 +597,14 @@ namespace MikroTikSDN.UI
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Routes.UpdateRouteAsync(id, d[0], d[1], d[2], d[3]);
+                                await svc.Routes.UpdateRouteAsync(idRoute, d[0], d[1], d[2], d[3]);
                                 await LoadSectionAsync("route");
                             }
                         }
                         break;
 
                     case "dhcp":
-                        // CORRIGIDO: usa svc em vez de new DhcpService(_client)
+                        string idDhcp = (item as dynamic).Id;
                         var allIfaces = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
                         if (_showDhcpClient)
                         {
@@ -549,7 +615,7 @@ namespace MikroTikSDN.UI
                                 ("Rota Def.", new[] { "yes", "no" }));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Dhcp.UpdateClientAsync(id, d[0], d[1] == "yes", d[2] == "yes");
+                                await svc.Dhcp.UpdateClientAsync(idDhcp, d[0], d[1] == "yes", d[2] == "yes");
                                 await LoadSectionAsync("dhcp");
                             }
                         }
@@ -565,7 +631,7 @@ namespace MikroTikSDN.UI
                                 ("IP Ranges", poolReal?.Ranges ?? ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
-                                await svc.Dhcp.UpdateServerAsync(id, d[0], d[1], d[2]);
+                                await svc.Dhcp.UpdateServerAsync(idDhcp, d[0], d[1], d[2]);
                                 if (poolReal?.Id != null && d[3] != poolReal.Ranges)
                                     await svc.IpPools.UpdateAsync(poolReal.Id, poolReal.Name!, d[3]);
                                 await LoadSectionAsync("dhcp");

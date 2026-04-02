@@ -19,7 +19,8 @@ namespace MikroTikSDN.Core.Services
             {
                 ["name"] = name,
                 ["interface"] = iface,
-                ["address-pool"] = pool   // hífen correto
+                ["address-pool"] = pool,   // hífen correto
+                ["disabled"] = "no"
             });
 
         public Task UpdateServerAsync(string id, string name, string iface, string pool)
@@ -65,5 +66,13 @@ namespace MikroTikSDN.Core.Services
         public Task SetClientStateAsync(string id, bool disabled) =>
     _client.PatchAsync($"/rest/ip/dhcp-client/{id}", new Dictionary<string, string> { ["disabled"] = disabled ? "yes" : "no" });
 
+
+        public Task AddNetworkAsync(string address, string gateway, string dnsServer)
+    => _client.PutAsync("/rest/ip/dhcp-server/network", new Dictionary<string, string>
+    {
+        ["address"] = address,
+        ["gateway"] = gateway,
+        ["dns-server"] = dnsServer // O Winbox costuma sugerir o próprio Gateway ou o do ISP
+    });
     }
 }

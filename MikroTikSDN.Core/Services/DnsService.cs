@@ -19,12 +19,9 @@ namespace MikroTikSDN.Core.Services
         /// </summary>
         public Task UpdateSettingsAsync(Dictionary<string, string> data)
         {
-            // Limpar os campos vazios à mesma por segurança
-            var dadosLimpos = data.Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value))
-                                  .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            // MUDANÇA: Usa PostAsync e adiciona "/set" ao link
-            return _client.PostAsync("/rest/ip/dns/set", dadosLimpos);
+            // Sem filtros! Envia o dicionário todo direto para o /set
+            // Assim o "" chega ao MikroTik e ele percebe que é para apagar.
+            return _client.PostAsync("/rest/ip/dns/set", data);
         }
 
         // Atalho conveniente para o caso simples (servers + allow-remote)
