@@ -142,8 +142,13 @@ namespace MikroTikSDN.UI
                             {
                                 using var d = new CrudDialog("Novo Perfil WiFi",
                                     ("Nome", "perfil1"),
-                                    ("Auth Types", new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
-                                    ("Ciphers", new[] { "aes-ccm", "tkip,aes-ccm" }),
+                                    ("Auth Types", new[] {
+                                     "wpa2-psk",              
+                                       "wpa-psk,wpa2-psk",     
+                                       "wpa2-eap",          
+                                       "wpa-eap,wpa2-eap"     
+                                     }),
+                                    ("Ciphers", new[] { "aes-ccm", "tkip", "tkip,aes-ccm" }),
                                     ("Password", ""));
                                 if (d.ShowDialog(this) == DialogResult.OK)
                                     await svc.Wireless.AddProfileAsync(d[0], d[1], d[2], d[3]);
@@ -722,8 +727,14 @@ namespace MikroTikSDN.UI
             _btnDelete.Visible = tag != "iface" && tag != "dns";
             _btnAction.Visible = tag is "bridge" or "wifi" or "dhcp" or "dns";
 
-            // O botão de Ativar/Desativar deve estar visível em quase tudo
+            // O botão de Ativar/Desativar está visível em quase tudo
             _btnToggle.Visible = tag is "iface" or "wifi" or "bridge" or "ip" or "dhcp" or "route";
+
+            // 💡 O TEU NOVO AJUSTE: Esconder o Toggle especificamente nos Perfis Wireless!
+            if (tag == "wifi" && _showWirelessProfiles)
+            {
+                _btnToggle.Visible = false;
+            }
 
             _btnAdd.Text = tag switch
             {

@@ -103,7 +103,7 @@ namespace MikroTikSDN.UI
             pnlSidebar.Controls.AddRange(new Control[] { lblAppTitle, sep, pnlNav });
 
             // ── Header ────────────────────────────────────────────────────────
-            pnlHeader = new Panel { Dock = DockStyle.Top, Height = 65, BackColor = bgPanel };
+            pnlHeader = new Panel { Dock = DockStyle.Top, Height = 65, Width = 1020, BackColor = bgPanel };
 
             lblSectionTitle = new Label
             {
@@ -125,8 +125,9 @@ namespace MikroTikSDN.UI
             _btnAddNewRouter = new Button
             {
                 Text = "＋ Router",
-                Location = new Point(1150, 16),
+                Location = new Point(920, 16), // Medida ajustada para os 1020px
                 Size = new Size(80, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
                 BackColor = accent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -138,8 +139,9 @@ namespace MikroTikSDN.UI
 
             _cmbRouters = new ComboBox
             {
-                Location = new Point(910, 20),
+                Location = new Point(680, 20), // Medida ajustada para os 1020px
                 Size = new Size(225, 25),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = bgItem,
                 ForeColor = Color.White,
