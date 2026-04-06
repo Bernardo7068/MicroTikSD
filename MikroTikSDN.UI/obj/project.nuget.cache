@@ -1,8 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "GFOLDpqGlBM=",
+  "dgSpecHash": "x0aZ+Rmszgc=",
   "success": true,
   "projectFilePath": "C:\\Users\\Bernardo\\source\\repos\\MicroTikSDN\\MikroTikSDN.UI\\MikroTikSDN.UI.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\Bernardo\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
+    "C:\\Users\\Bernardo\\.nuget\\packages\\qrcoder\\1.8.0\\qrcoder.1.8.0.nupkg.sha512"
+  ],
   "logs": []
 }

@@ -1,12 +1,13 @@
+C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.deps.json
+C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.dll
+C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.pdb
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.AssemblyInfoInputs.cache
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.AssemblyInfo.cs
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.csproj.CoreCompileInputs.cache
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.sourcelink.json
-C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.deps.json
-C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.dll
-C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\bin\Debug\net10.0\MikroTikSDN.Core.pdb
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.dll
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\refint\MikroTikSDN.Core.dll
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.pdb
 C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\ref\MikroTikSDN.Core.dll
+C:\Users\Bernardo\source\repos\MicroTikSDN\MikroTikSDN.Core\obj\Debug\net10.0\MikroTikSDN.Core.csproj.AssemblyReference.cache

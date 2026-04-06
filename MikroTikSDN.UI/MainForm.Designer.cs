@@ -13,7 +13,7 @@ namespace MikroTikSDN.UI
         private System.Windows.Forms.Button _btnAddNewRouter;
 
         // Botões da toolbar de ações
-        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle;
+        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle, _btnExport;
 
         protected override void Dispose(bool disposing)
         {
@@ -75,7 +75,8 @@ namespace MikroTikSDN.UI
                 { "🏷️  Endereços IP",   "ip"       },
                 { "🛤️  Rotas Estáticas","route"    },
                 { "🧬  Servidor DHCP",  "dhcp"     },
-                { "🌐  Configurar DNS", "dns"      }
+                { "🌐  Configurar DNS", "dns"      },
+                { "🛡️  WireGuard VPN",  "wg"       }
             };
 
             for (int i = 0; i < navItems.GetLength(0); i++)
@@ -166,14 +167,16 @@ namespace MikroTikSDN.UI
             _btnToggle = MakeToolbarBtn("⚡ Toggle", success, 260);    // Novo
             _btnAction = MakeToolbarBtn("🛠 Sub-Menu", bgItem, 390); // Mudei a cor e posição
             _btnRefresh = MakeToolbarBtn("↻ Atualizar", bgItem, 520);
+            _btnExport = MakeToolbarBtn("📥 Exportar .conf", Color.FromArgb(76, 175, 130), 650);
 
             _btnAdd.Click += BtnAdd_Click;
             _btnDelete.Click += BtnDelete_Click;
             _btnAction.Click += BtnAction_Click;
             _btnRefresh.Click += BtnRefresh_Click;
             _btnToggle.Click += BtnToggle_Click;
+            _btnExport.Click += BtnExport_Click;
 
-            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnToggle, _btnAction, _btnRefresh });
+            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnToggle, _btnAction, _btnRefresh, _btnExport });
 
             // ── DataGrid ──────────────────────────────────────────────────────
             _dgvData = new DataGridView

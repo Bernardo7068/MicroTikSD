@@ -2,6 +2,7 @@ using MikroTikSDN.Core.Managers;
 using MikroTikSDN.Core.Models;
 using MikroTikSDN.Core.Services;
 using MikroTikSDN.UI.Dialogs;
+using QRCoder;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -11,15 +12,15 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 // Aliases para evitar conflitos de nomes com System.Net.NetworkInformation
-using RouterBridge      = MikroTikSDN.Core.Models.BridgeModel;
-using RouterBridgePort  = MikroTikSDN.Core.Models.BridgePortModel;
-using RouterDevice      = MikroTikSDN.Core.Models.RouterDevice;
-using RouterDhcp        = MikroTikSDN.Core.Models.DhcpModel;
-using RouterIpAddress   = MikroTikSDN.Core.Models.IpAddressModel;
-using RouterNetInterface= MikroTikSDN.Core.Models.NetworkInterface;
-using RouterRoute       = MikroTikSDN.Core.Models.StaticRouteModel;
-using RouterSecProfile  = MikroTikSDN.Core.Models.SecurityProfile;
-using RouterWireless    = MikroTikSDN.Core.Models.WirelessInterface;
+using RouterBridge = MikroTikSDN.Core.Models.BridgeModel;
+using RouterBridgePort = MikroTikSDN.Core.Models.BridgePortModel;
+using RouterDevice = MikroTikSDN.Core.Models.RouterDevice;
+using RouterDhcp = MikroTikSDN.Core.Models.DhcpModel;
+using RouterIpAddress = MikroTikSDN.Core.Models.IpAddressModel;
+using RouterNetInterface = MikroTikSDN.Core.Models.NetworkInterface;
+using RouterRoute = MikroTikSDN.Core.Models.StaticRouteModel;
+using RouterSecProfile = MikroTikSDN.Core.Models.SecurityProfile;
+using RouterWireless = MikroTikSDN.Core.Models.WirelessInterface;
 
 namespace MikroTikSDN.UI
 {
@@ -28,13 +29,15 @@ namespace MikroTikSDN.UI
         // ─── Estado ───────────────────────────────────────────────────────────
 
         private readonly Dictionary<string, RouterSession> _sessions = new();
+        private Dictionary<string, string> _vaultPrivado = new Dictionary<string, string>();
         private RouterSession _current = null!;
         private string _currentTag = "iface";
 
         // Sub-vistas (estilo WinBox — alternar entre listas dentro da mesma secção)
-        private bool _showBridgePorts      = false;
+        private bool _showBridgePorts = false;
         private bool _showWirelessProfiles = false;
-        private bool _showDhcpClient       = false;
+        private bool _showDhcpClient = false;
+        private bool _showWgPeers = true; // WireGuard: True = Clientes, False = Servidores
 
         // ─── Construtor ───────────────────────────────────────────────────────
 
@@ -57,11 +60,12 @@ namespace MikroTikSDN.UI
                 if (c is Button b) { b.ForeColor = Color.Silver; b.BackColor = Color.Transparent; }
             btn.ForeColor = Color.FromArgb(124, 106, 247);
 
-            _currentTag            = btn.Tag?.ToString() ?? "iface";
-            _showBridgePorts       = false;
-            _showWirelessProfiles  = false;
-            _showDhcpClient        = false;
-            lblSectionTitle.Text   = GetSectionTitle(_currentTag);
+            _currentTag = btn.Tag?.ToString() ?? "iface";
+            _showBridgePorts = false;
+            _showWirelessProfiles = false;
+            _showDhcpClient = false;
+            _showWgPeers = true; // Reset da vista do WireGuard
+            lblSectionTitle.Text = GetSectionTitle(_currentTag);
 
             await LoadSectionAsync(_currentTag);
         }
@@ -78,16 +82,20 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "wifi":
-                        _showWirelessProfiles  = !_showWirelessProfiles;
-                        lblSectionTitle.Text   = _showWirelessProfiles ? "Wireless - Perfis" : "Wireless - Interfaces";
+                        _showWirelessProfiles = !_showWirelessProfiles;
+                        lblSectionTitle.Text = _showWirelessProfiles ? "Wireless - Perfis" : "Wireless - Interfaces";
                         break;
                     case "bridge":
-                        _showBridgePorts     = !_showBridgePorts;
+                        _showBridgePorts = !_showBridgePorts;
                         lblSectionTitle.Text = _showBridgePorts ? "Bridge - Portas" : "Bridge - Lista";
                         break;
                     case "dhcp":
-                        _showDhcpClient      = !_showDhcpClient;
+                        _showDhcpClient = !_showDhcpClient;
                         lblSectionTitle.Text = _showDhcpClient ? "DHCP - Clients" : "DHCP - Servers";
+                        break;
+                    case "wg":
+                        _showWgPeers = !_showWgPeers;
+                        lblSectionTitle.Text = _showWgPeers ? "WireGuard - Clientes" : "WireGuard - Servidor";
                         break;
                     case "dns":
                         await ConfigurarDnsAsync();
@@ -112,7 +120,7 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "bridge":
-                        { // Chaves para isolar o scope
+                        {
                             if (_showBridgePorts)
                             {
                                 var bridges = await svc.Bridges.GetBridgesAsync();
@@ -143,10 +151,10 @@ namespace MikroTikSDN.UI
                                 using var d = new CrudDialog("Novo Perfil WiFi",
                                     ("Nome", "perfil1"),
                                     ("Auth Types", new[] {
-                                     "wpa2-psk",              
-                                       "wpa-psk,wpa2-psk",     
-                                       "wpa2-eap",          
-                                       "wpa-eap,wpa2-eap"     
+                                     "wpa2-psk",
+                                       "wpa-psk,wpa2-psk",
+                                       "wpa2-eap",
+                                       "wpa-eap,wpa2-eap"
                                      }),
                                     ("Ciphers", new[] { "aes-ccm", "tkip", "tkip,aes-ccm" }),
                                     ("Password", ""));
@@ -192,12 +200,10 @@ namespace MikroTikSDN.UI
 
                     case "dhcp":
                         {
-                            
                             var ifacesDhcp = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
 
                             if (_showDhcpClient)
                             {
-                                // --- DHCP CLIENT (Mantém-se igual) ---
                                 using var d = new CrudDialog("Novo DHCP Client",
                                     ("Interface", ifacesDhcp),
                                     ("Usar DNS do ISP", new[] { "yes", "no" }),
@@ -210,16 +216,12 @@ namespace MikroTikSDN.UI
                                     {
                                         await svc.Dhcp.AddClientAsync(d[0], d[1] == "yes", d[2] == "yes");
                                         SetStatus("✅ DHCP Client criado com sucesso!");
-                                        await LoadSectionAsync("dhcp");
                                     }
                                     catch (Exception ex) { SetStatus($"❌ Erro: {ex.Message}", true); }
                                 }
                             }
                             else
                             {
-                                // --- DHCP SERVER WIZARD (O Novo Winbox Setup) ---
-
-                                // PASSO 1: Pedir Interface e Rede
                                 using var d1 = new CrudDialog("DHCP Setup (1/2)",
                                     ("Nome do Servidor", "dhcp1"),
                                     ("Interface", ifacesDhcp),
@@ -231,7 +233,6 @@ namespace MikroTikSDN.UI
                                     string iface = d1[1].Trim();
                                     string network = d1[2].Trim();
 
-                                    // Matemática de IPs: Tentamos adivinhar a rede para sugerir ao utilizador
                                     string baseIp = "";
                                     if (network.Contains("/") && network.Contains("."))
                                     {
@@ -240,15 +241,13 @@ namespace MikroTikSDN.UI
                                         if (lastDot > 0) baseIp = ipPart.Substring(0, lastDot);
                                     }
 
-                                    // Se ele meteu 192.168.88.0/24, a base é "192.168.88"
                                     string sugeridoGateway = baseIp != "" ? $"{baseIp}.1" : "";
                                     string sugeridoRange = baseIp != "" ? $"{baseIp}.2-{baseIp}.254" : "";
 
-                                    // PASSO 2: Mostrar sugestões e deixar o utilizador alterar o que quiser
                                     using var d2 = new CrudDialog("DHCP Setup (2/2)",
                                         ("Gateway for DHCP Network", sugeridoGateway),
                                         ("Addresses to Give Out", sugeridoRange),
-                                        ("DNS Servers (opcional)", sugeridoGateway)); // Sugere o Gateway como DNS
+                                        ("DNS Servers (opcional)", sugeridoGateway));
 
                                     if (d2.ShowDialog(this) == DialogResult.OK)
                                     {
@@ -261,17 +260,10 @@ namespace MikroTikSDN.UI
 
                                         try
                                         {
-                                            // 1. Criar a Pool (Range de IPs)
                                             await svc.IpPools.AddAsync(poolName, ipRange);
-
-                                            // 2. Criar a Network (Gateway e DNS)
                                             await svc.Dhcp.AddNetworkAsync(network, gateway, dnsServer);
-
-                                            // 3. Criar o Servidor (Ligar tudo à Interface)
                                             await svc.Dhcp.AddServerAsync(serverName, iface, poolName);
-
                                             SetStatus("✅ DHCP Setup concluído com sucesso!");
-                                            await LoadSectionAsync("dhcp");
                                         }
                                         catch (Exception ex)
                                         {
@@ -283,10 +275,61 @@ namespace MikroTikSDN.UI
                             }
                         }
                         break;
+
+                    case "wg":
+                        if (_showWgPeers) // Adicionar CLIENTE
+                        {
+                            var chaves = WireGuardService.GenerateKeyPair();
+                            var wgIfaces = (await svc.WireGuard.GetInterfacesAsync()).Select(i => i.Name).ToArray();
+
+                            if (wgIfaces.Length == 0)
+                            {
+                                MessageBox.Show("Crie primeiro um Servidor/Interface!", "Aviso");
+                                return;
+                            }
+
+                            using var d = new CrudDialog("Novo Cliente VPN",
+                                ("Nome do Dispositivo", "Telemovel"),
+                                ("Interface Servidor", wgIfaces),
+                                ("IP na VPN", "192.168.2.2/32"),
+                                ("Public Key (Gerada pela App)", chaves.pub));
+
+                            if (d.ShowDialog(this) == DialogResult.OK)
+                            {
+                                SetStatus("A criar cliente...");
+                                await svc.WireGuard.AddPeerAsync(d[1], d[3], d[2], d[0]);
+
+                                // 1. Guardar no Vault Privado
+                                _vaultPrivado[d[0]] = chaves.priv;
+
+                                // 2. Perguntar APENAS se quer ver o QR Code
+                                if (MessageBox.Show("Cliente criado! Queres ver o QR Code agora?", "Sucesso", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                                {
+                                    var server = (await svc.WireGuard.GetInterfacesAsync()).First(i => i.Name == d[1]);
+
+                                    // 3. Descobrir o IP de forma 100% invisível (sem diálogos)
+                                    string ipDetectado = await svc.WireGuard.GetPublicEndpointAsync();
+
+                                    // Fallback silencioso caso a API do MikroTik falhe
+                                    if (ipDetectado == "TEU_IP_PUBLICO" || string.IsNullOrWhiteSpace(ipDetectado))
+                                        ipDetectado = _current.Device.IpAddress;
+
+                                    // 4. Montar a configuração e mostrar a imagem
+                                    string config = WireGuardService.GenerateClientConfig(chaves.priv, d[2], server.PublicKey, $"{ipDetectado}:{server.ListenPort}");
+                                    MostrarQRCode(config);
+                                }
+                            }
+                        }
+                        else // Adicionar SERVIDOR
+                        {
+                            using var d = new CrudDialog("Novo Servidor WireGuard", ("Nome", "wireguard1"), ("Porta", "13231"));
+                            if (d.ShowDialog(this) == DialogResult.OK)
+                                await svc.WireGuard.AddInterfaceAsync(d[0], d[1]);
+                        }
+                        break;
                 }
 
                 await LoadSectionAsync(_currentTag);
-                SetStatus("✅ Adicionado com sucesso!");
             }
             catch (Exception ex) { SetStatus($"❌ Erro: {ex.Message}", true); }
         }
@@ -299,7 +342,6 @@ namespace MikroTikSDN.UI
             var item = _dgvData.SelectedRows[0].DataBoundItem;
             string id = (item as dynamic).Id;
 
-            // Verifica o estado atual (MikroTik envia "true"/"false" ou "yes"/"no")
             string val = (item as dynamic).Disabled?.ToString().ToLower() ?? "false";
             bool isCurrentlyDisabled = val == "true" || val == "yes";
 
@@ -335,13 +377,11 @@ namespace MikroTikSDN.UI
 
             try
             {
-                // DNS não tem lista — botão serve para ativar/desativar pedidos remotos
                 if (_currentTag == "dns")
                 {
                     var dns = await svc.Dns.GetSettingsAsync();
                     string novo = dns.AllowRemote?.ToLower() == "yes" ? "no" : "yes";
 
-                    // CORRIGIDO: Dictionary com hífen correto
                     await svc.Dns.UpdateSettingsAsync(new Dictionary<string, string>
                     {
                         ["allow-remote-requests"] = novo
@@ -370,14 +410,12 @@ namespace MikroTikSDN.UI
                         var wlan = (RouterWireless)item;
                         if (string.IsNullOrEmpty(wlan.MasterInterface))
                         {
-                            // Interface física — ativar/desativar
                             bool estaDesativada = wlan.Disabled?.ToLower() == "true" ||
                                                   wlan.Disabled?.ToLower() == "yes";
                             await svc.Wireless.SetStateAsync(id, !estaDesativada);
                         }
                         else
                         {
-                            // Interface virtual — pode apagar
                             if (MessageBox.Show("Remover interface virtual?", "Confirmar",
                                 MessageBoxButtons.YesNo) == DialogResult.Yes)
                                 await svc.Wireless.DeleteVirtualInterfaceAsync(id);
@@ -395,14 +433,31 @@ namespace MikroTikSDN.UI
                             await svc.IpAddresses.DeleteAddressAsync(id); break;
                         case "bridge":
                             if (_showBridgePorts) await svc.Bridges.DeleteBridgePortAsync(id);
-                            else                  await svc.Bridges.DeleteBridgeAsync(id);
+                            else await svc.Bridges.DeleteBridgeAsync(id);
                             break;
                         case "dhcp":
                             if (_showDhcpClient) await svc.Dhcp.DeleteClientAsync(id);
-                            else                 await svc.Dhcp.DeleteServerAsync(id);
+                            else await svc.Dhcp.DeleteServerAsync(id);
                             break;
                         case "route":
                             await svc.Routes.DeleteRouteAsync(id); break;
+                        case "wg":
+                            if (_showWgPeers) // 📱 SE A TUA GRELHA ESTIVER A MOSTRAR OS CLIENTES
+                            {
+                                // Ele vai usar APENAS o método DeletePeerAsync. 
+                                // O servidor (Interface) fica 100% intacto a funcionar para os outros!
+                                await svc.WireGuard.DeletePeerAsync(id);
+                            }
+                            else // 🖥️ SE A TUA GRELHA ESTIVER A MOSTRAR OS SERVIDORES
+                            {
+                                // Aqui sim, ele tenta apagar o servidor, mas primeiro...
+                                if (MessageBox.Show("Atenção: Apagar a interface vai desligar todos os clientes associados a ela. Queres mesmo continuar?",
+                                    "Apagar Servidor", MessageBoxButtons.YesNo, MessageBoxIcon.Error) == DialogResult.Yes)
+                                {
+                                    await svc.WireGuard.DeleteInterfaceAsync(id);
+                                }
+                            }
+                            break;
                     }
                 }
 
@@ -425,19 +480,23 @@ namespace MikroTikSDN.UI
                 var svc = _current.Services;
                 switch (tag)
                 {
-                    case "iface":  _dgvData.DataSource = await svc.Interfaces.GetAllAsync();     break;
-                    case "wifi":   _dgvData.DataSource = _showWirelessProfiles
+                    case "iface": _dgvData.DataSource = await svc.Interfaces.GetAllAsync(); break;
+                    case "wifi":
+                        _dgvData.DataSource = _showWirelessProfiles
                                        ? await svc.Wireless.GetProfilesAsync()
-                                       : await svc.Wireless.GetWirelessAsync();                  break;
-                    case "bridge": _dgvData.DataSource = _showBridgePorts
+                                       : await svc.Wireless.GetWirelessAsync(); break;
+                    case "bridge":
+                        _dgvData.DataSource = _showBridgePorts
                                        ? await svc.Bridges.GetPortsAsync()
-                                       : await svc.Bridges.GetBridgesAsync();                    break;
-                    case "ip":     _dgvData.DataSource = await svc.IpAddresses.GetAddressesAsync(); break;
-                    case "route":  _dgvData.DataSource = await svc.Routes.GetRoutesAsync();      break;
-                    case "dhcp":   _dgvData.DataSource = _showDhcpClient
+                                       : await svc.Bridges.GetBridgesAsync(); break;
+                    case "ip": _dgvData.DataSource = await svc.IpAddresses.GetAddressesAsync(); break;
+                    case "route": _dgvData.DataSource = await svc.Routes.GetRoutesAsync(); break;
+                    case "dhcp":
+                        _dgvData.DataSource = _showDhcpClient
                                        ? await svc.Dhcp.GetClientsAsync()
-                                       : await svc.Dhcp.GetServersAsync();                       break;
-                    case "dns":    await LoadDnsAsync(svc);                                       break;
+                                       : await svc.Dhcp.GetServersAsync(); break;
+                    case "dns": await LoadDnsAsync(svc); break;
+                    case "wg": _dgvData.DataSource = _showWgPeers ? await svc.WireGuard.GetPeersAsync() : await svc.WireGuard.GetInterfacesAsync(); break;
                 }
 
                 FormatGridColumns(tag);
@@ -449,14 +508,14 @@ namespace MikroTikSDN.UI
         private async Task LoadDnsAsync(RouterServices svc)
         {
             var dns = await svc.Dns.GetSettingsAsync();
-            var dt  = new DataTable();
+            var dt = new DataTable();
             dt.Columns.Add("Propriedade");
             dt.Columns.Add("Valor");
-            dt.Rows.Add("Servidores DNS",    dns.Servers        ?? "—");
-            dt.Rows.Add("Pedidos Remotos",   dns.AllowRemote    ?? "—");
-            dt.Rows.Add("Cache Size (KiB)",  dns.CacheSize      ?? "—");
-            dt.Rows.Add("DoH Server",        dns.UseDohServer   ?? "—");
-            dt.Rows.Add("Dynamic Servers",   dns.DynamicServers ?? "—");
+            dt.Rows.Add("Servidores DNS", dns.Servers ?? "—");
+            dt.Rows.Add("Pedidos Remotos", dns.AllowRemote ?? "—");
+            dt.Rows.Add("Cache Size (KiB)", dns.CacheSize ?? "—");
+            dt.Rows.Add("DoH Server", dns.UseDohServer ?? "—");
+            dt.Rows.Add("Dynamic Servers", dns.DynamicServers ?? "—");
             _dgvData.DataSource = dt;
         }
 
@@ -480,20 +539,16 @@ namespace MikroTikSDN.UI
 
                 if (d.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Criamos o dicionário FORÇANDO o envio de todos os campos, 
-                    // mesmo que tenhas apagado o texto na janela.
                     var updates = new Dictionary<string, string>
                     {
                         ["servers"] = d[0].Trim(),
                         ["use-doh-server"] = d[1].Trim(),
-                        ["cache-size"] = string.IsNullOrWhiteSpace(d[2]) ? "2048" : d[2].Trim(), // Proteção caso apagues os números
+                        ["cache-size"] = string.IsNullOrWhiteSpace(d[2]) ? "2048" : d[2].Trim(),
                         ["max-udp-packet-size"] = string.IsNullOrWhiteSpace(d[3]) ? "4096" : d[3].Trim(),
                         ["allow-remote-requests"] = d[4].Trim().ToLower() == "yes" ? "yes" : "no"
                     };
 
                     SetStatus("A guardar DNS...");
-
-                    // Vai direto para o DnsService e de lá para o MikroTik
                     await svc.Dns.UpdateSettingsAsync(updates);
 
                     await LoadSectionAsync("dns");
@@ -513,7 +568,7 @@ namespace MikroTikSDN.UI
         {
             if (e.RowIndex < 0) return;
 
-            var svc  = _current.Services;
+            var svc = _current.Services;
             var item = _dgvData.Rows[e.RowIndex].DataBoundItem;
 
             SetStatus("A carregar dados para edição...");
@@ -524,11 +579,11 @@ namespace MikroTikSDN.UI
                 {
                     case "ip":
                         string idIp = (item as dynamic).Id;
-                        var ipItem   = (RouterIpAddress)item;
+                        var ipItem = (RouterIpAddress)item;
                         var ifacesIP = await svc.Interfaces.GetAllAsync();
                         using (var d = new CrudDialog($"Editar IP: {ipItem.Address}",
-                            ("Endereço/CIDR", ipItem.Address   ?? ""),
-                            ("Interface",     ifacesIP.Select(i => i.Name).ToArray())))
+                            ("Endereço/CIDR", ipItem.Address ?? ""),
+                            ("Interface", ifacesIP.Select(i => i.Name).ToArray())))
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -543,12 +598,12 @@ namespace MikroTikSDN.UI
                         if (_showBridgePorts)
                         {
                             var portItem = (RouterBridgePort)item;
-                            var bList    = await svc.Bridges.GetBridgesAsync();
-                            var iList    = await svc.Interfaces.GetAllAsync();
-                            using var d  = new CrudDialog($"Editar Porta: {portItem.Interface}",
+                            var bList = await svc.Bridges.GetBridgesAsync();
+                            var iList = await svc.Interfaces.GetAllAsync();
+                            using var d = new CrudDialog($"Editar Porta: {portItem.Interface}",
                                 ("Interface", iList.Select(i => i.Name).ToArray()),
-                                ("Bridge",    bList.Select(b => b.Name).ToArray()),
-                                ("PVID",      portItem.Pvid ?? "1"));
+                                ("Bridge", bList.Select(b => b.Name).ToArray()),
+                                ("PVID", portItem.Pvid ?? "1"));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
                                 await svc.Bridges.UpdatePortAsync(idBridge, d[1], d[0], d[2]);
@@ -575,10 +630,10 @@ namespace MikroTikSDN.UI
                         {
                             var profile = (RouterSecProfile)item;
                             using var d = new CrudDialog($"Editar Perfil: {profile.Name}",
-                                ("Nome",      profile.Name ?? ""),
-                                ("Auth Types",new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
-                                ("Ciphers",   new[] { "aes-ccm", "tkip,aes-ccm" }),
-                                ("Password",  ""));
+                                ("Nome", profile.Name ?? ""),
+                                ("Auth Types", new[] { "wpa2-psk", "wpa-psk,wpa2-psk" }),
+                                ("Ciphers", new[] { "aes-ccm", "tkip,aes-ccm" }),
+                                ("Password", ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
                                 await svc.Wireless.UpdateProfileAsync(idWifi, d[0], d[1], d[2], d[3]);
@@ -595,10 +650,10 @@ namespace MikroTikSDN.UI
                         string idRoute = (item as dynamic).Id;
                         var route = (RouterRoute)item;
                         using (var d = new CrudDialog($"Editar Rota: {route.DstAddress}",
-                            ("Destino",   route.DstAddress ?? "0.0.0.0/0"),
-                            ("Gateway",   route.Gateway    ?? ""),
-                            ("Distância", route.Distance   ?? "1"),
-                            ("Comment",   route.Comment    ?? "")))
+                            ("Destino", route.DstAddress ?? "0.0.0.0/0"),
+                            ("Gateway", route.Gateway ?? ""),
+                            ("Distância", route.Distance ?? "1"),
+                            ("Comment", route.Comment ?? "")))
                         {
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -616,7 +671,7 @@ namespace MikroTikSDN.UI
                             var c = (DhcpClientModel)item;
                             using var d = new CrudDialog("Editar DHCP Client",
                                 ("Interface", allIfaces),
-                                ("Usar DNS",  new[] { "yes", "no" }),
+                                ("Usar DNS", new[] { "yes", "no" }),
                                 ("Rota Def.", new[] { "yes", "no" }));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -626,13 +681,13 @@ namespace MikroTikSDN.UI
                         }
                         else
                         {
-                            var s       = (RouterDhcp)item;
-                            var pools   = await svc.IpPools.GetAllAsync();
-                            var poolReal= pools.FirstOrDefault(p => p.Name == s.AddressPool);
+                            var s = (RouterDhcp)item;
+                            var pools = await svc.IpPools.GetAllAsync();
+                            var poolReal = pools.FirstOrDefault(p => p.Name == s.AddressPool);
                             using var d = new CrudDialog("Editar DHCP Server",
-                                ("Nome",      s.Name ?? ""),
+                                ("Nome", s.Name ?? ""),
                                 ("Interface", allIfaces),
-                                ("Pool",      pools.Select(p => p.Name).ToArray()),
+                                ("Pool", pools.Select(p => p.Name).ToArray()),
                                 ("IP Ranges", poolReal?.Ranges ?? ""));
                             if (d.ShowDialog(this) == DialogResult.OK)
                             {
@@ -647,6 +702,20 @@ namespace MikroTikSDN.UI
                     case "dns":
                         await ConfigurarDnsAsync();
                         break;
+                    case "wg":
+                        if (_showWgPeers)
+                        {
+                            var peer = (WireGuardPeerModel)item;
+                            using var d = new CrudDialog($"Editar Peer: {peer.Comment}", ("Interface", (await svc.WireGuard.GetInterfacesAsync()).Select(i => i.Name).ToArray()), ("Public Key", peer.PublicKey ?? ""), ("Allowed Address", peer.AllowedAddress ?? ""), ("Comment", peer.Comment ?? ""));
+                            if (d.ShowDialog(this) == DialogResult.OK) { await svc.WireGuard.UpdatePeerAsync(peer.Id!, d[0], d[1], d[2], d[3]); await LoadSectionAsync("wg"); }
+                        }
+                        else
+                        {
+                            var iface = (WireGuardInterfaceModel)item;
+                            using var d = new CrudDialog($"Editar Servidor: {iface.Name}", ("Nome", iface.Name ?? ""), ("Porta", iface.ListenPort ?? "13231"));
+                            if (d.ShowDialog(this) == DialogResult.OK) { await svc.WireGuard.UpdateInterfaceAsync(iface.Id!, d[0], d[1]); await LoadSectionAsync("wg"); }
+                        }
+                        break;
                 }
 
                 SetStatus("✅ Alterações aplicadas!");
@@ -654,35 +723,89 @@ namespace MikroTikSDN.UI
             catch (Exception ex) { SetStatus($"❌ Erro ao editar: {ex.Message}", true); }
         }
 
+        private async void BtnExport_Click(object sender, EventArgs e)
+        {
+            if (_dgvData.SelectedRows.Count == 0 || !_showWgPeers) return;
+            var peer = (WireGuardPeerModel)_dgvData.SelectedRows[0].DataBoundItem;
+
+            try
+            {
+                // Verifica a memória
+                if (!_vaultPrivado.TryGetValue(peer.Comment ?? "", out string privKey))
+                {
+                    MessageBox.Show("Chave privada não encontrada nesta sessão. Tem de criar um cliente novo para gerar o QR Code.", "Aviso");
+                    return;
+                }
+
+                SetStatus("A montar configuração e gerar QR Code...");
+
+                // 1. Obter o IP/DNS automaticamente
+                string ipDetectado = await _current.Services.WireGuard.GetPublicEndpointAsync();
+                if (ipDetectado == "TEU_IP_PUBLICO" || string.IsNullOrWhiteSpace(ipDetectado))
+                    ipDetectado = _current.Device.IpAddress;
+
+                var server = (await _current.Services.WireGuard.GetInterfacesAsync()).First(i => i.Name == peer.Interface);
+
+                // 2. Gerar a string do ficheiro sem perguntar mais nada
+                string config = WireGuardService.GenerateClientConfig(privKey, peer.AllowedAddress, server.PublicKey, $"{ipDetectado}:{server.ListenPort}");
+
+                // 3. Guardar Ficheiro .conf (Opcional, mas útil para o PC)
+                using (var sfd = new SaveFileDialog { Filter = "Config|*.conf", FileName = $"{peer.Comment}.conf" })
+                {
+                    if (sfd.ShowDialog() == DialogResult.OK)
+                    {
+                        System.IO.File.WriteAllText(sfd.FileName, config);
+                        SetStatus("✅ Ficheiro exportado com sucesso!");
+                    }
+                }
+
+                // 4. Mostrar QR Code no ecrã imediatamente
+                MostrarQRCode(config);
+            }
+            catch (Exception ex) { SetStatus($"Erro: {ex.Message}", true); }
+        }
+
+        private void MostrarQRCode(string texto)
+        {
+            using (var qrGen = new QRCodeGenerator())
+            using (var qrData = qrGen.CreateQrCode(texto, QRCodeGenerator.ECCLevel.Q))
+            using (var qrCode = new QRCode(qrData))
+            {
+                var bitmap = qrCode.GetGraphic(20);
+                Form f = new Form { Text = "Scan WireGuard VPN", Size = new Size(420, 480), StartPosition = FormStartPosition.CenterParent, BackColor = Color.White, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false };
+                PictureBox pic = new PictureBox { Dock = DockStyle.Fill, Image = bitmap, SizeMode = PictureBoxSizeMode.Zoom, Padding = new Padding(25) };
+                f.Controls.Add(pic);
+                f.ShowDialog(this);
+            }
+        }
         // ─── Editar interface wireless (diálogo completo) ─────────────────────
 
         private async Task EditarWirelessAsync(RouterWireless wlan)
         {
-            var svc      = _current.Services;
+            var svc = _current.Services;
             var profiles = await svc.Wireless.GetProfilesAsync();
-            var profNames= profiles.Select(p => p.Name).DefaultIfEmpty("default").ToArray();
+            var profNames = profiles.Select(p => p.Name).DefaultIfEmpty("default").ToArray();
 
             using var d = new CrudDialog($"Wireless — {wlan.Name}",
-                ("Mode",            new[] { "ap-bridge", "station", "bridge", "station-bridge" }),
-                ("Band",            new[] { "2ghz-b/g/n", "5ghz-a/n/ac", "2ghz-onlyn", "5ghz-onlyac" }),
-                ("Channel Width",   new[] { "20mhz", "20/40mhz-XX", "20/40mhz-Ce", "20/40mhz-eC" }),
-                ("Frequency",       wlan.Frequency  ?? "auto"),
-                ("SSID",            wlan.Ssid       ?? "MikroTik"),
-                ("Security Profile",profNames),
-                ("Country",         new[] { "portugal", "brazil", "spain", "etsi" }));
+                ("Mode", new[] { "ap-bridge", "station", "bridge", "station-bridge" }),
+                ("Band", new[] { "2ghz-b/g/n", "5ghz-a/n/ac", "2ghz-onlyn", "5ghz-onlyac" }),
+                ("Channel Width", new[] { "20mhz", "20/40mhz-XX", "20/40mhz-Ce", "20/40mhz-eC" }),
+                ("Frequency", wlan.Frequency ?? "auto"),
+                ("SSID", wlan.Ssid ?? "MikroTik"),
+                ("Security Profile", profNames),
+                ("Country", new[] { "portugal", "brazil", "spain", "etsi" }));
 
             if (d.ShowDialog(this) == DialogResult.OK)
             {
-                // CORRIGIDO: Dictionary com hífens corretos (sem @channel_width, @security_profile)
                 await svc.Wireless.UpdateInterfaceAsync(wlan.Id!, new Dictionary<string, string>
                 {
-                    ["mode"]             = d[0],
-                    ["band"]             = d[1],
-                    ["channel-width"]    = d[2],
-                    ["frequency"]        = d[3],
-                    ["ssid"]             = d[4],
+                    ["mode"] = d[0],
+                    ["band"] = d[1],
+                    ["channel-width"] = d[2],
+                    ["frequency"] = d[3],
+                    ["ssid"] = d[4],
                     ["security-profile"] = d[5],
-                    ["country"]          = d[6]
+                    ["country"] = d[6]
                 });
 
                 await LoadSectionAsync("wifi");
@@ -699,20 +822,25 @@ namespace MikroTikSDN.UI
 
             var names = new Dictionary<string, string>
             {
-                ["MacAddress"]      = "MAC",
-                ["Ssid"]            = "Rede (SSID)",
-                ["Address"]         = "Endereço IP",
-                ["Network"]         = "Rede",
-                ["Interface"]       = "Interface",
-                ["Running"]         = "Ativo",
-                ["Disabled"]        = "Desativado",
-                ["DstAddress"]      = "Destino",
-                ["Gateway"]         = "Gateway",
-                ["Distance"]        = "Distância",
+                ["MacAddress"] = "MAC",
+                ["Ssid"] = "Rede (SSID)",
+                ["Address"] = "Endereço IP",
+                ["Network"] = "Rede",
+                ["Interface"] = "Interface",
+                ["Running"] = "Ativo",
+                ["Disabled"] = "Desativado",
+                ["DstAddress"] = "Destino",
+                ["Gateway"] = "Gateway",
+                ["Distance"] = "Distância",
                 ["SecurityProfile"] = "Perfil Seg.",
-                ["AddressPool"]     = "Pool",
+                ["AddressPool"] = "Pool",
                 ["MasterInterface"] = "Master",
-                ["AuthTypes"]       = "Auth Types"
+                ["AuthTypes"] = "Auth Types",
+                // Novos para o WireGuard:
+                ["AllowedAddress"] = "IP Permitido",
+                ["PublicKey"] = "Chave Pública",
+                ["ListenPort"] = "Porta de Escuta",
+                ["Comment"] = "Descrição"
             };
 
             foreach (DataGridViewColumn col in _dgvData.Columns)
@@ -725,22 +853,18 @@ namespace MikroTikSDN.UI
         {
             _btnAdd.Visible = tag != "iface" && tag != "dns";
             _btnDelete.Visible = tag != "iface" && tag != "dns";
-            _btnAction.Visible = tag is "bridge" or "wifi" or "dhcp" or "dns";
-
-            // O botão de Ativar/Desativar está visível em quase tudo
+            _btnAction.Visible = tag is "bridge" or "wifi" or "dhcp" or "dns" or "wg";
             _btnToggle.Visible = tag is "iface" or "wifi" or "bridge" or "ip" or "dhcp" or "route";
+            if (_btnExport != null) _btnExport.Visible = (tag == "wg" && _showWgPeers); // Botão Export só nos Peers
 
-            // 💡 O TEU NOVO AJUSTE: Esconder o Toggle especificamente nos Perfis Wireless!
-            if (tag == "wifi" && _showWirelessProfiles)
-            {
-                _btnToggle.Visible = false;
-            }
+            if (tag == "wifi" && _showWirelessProfiles) _btnToggle.Visible = false;
 
             _btnAdd.Text = tag switch
             {
                 "wifi" => _showWirelessProfiles ? "➕ Perfil" : "➕ VAP",
                 "bridge" => _showBridgePorts ? "➕ Porta" : "➕ Bridge",
                 "dhcp" => _showDhcpClient ? "➕ Client" : "➕ Server",
+                "wg" => _showWgPeers ? "➕ Cliente" : "➕ Servidor",
                 "ip" => "➕ IP",
                 "route" => "➕ Rota",
                 _ => "➕ Adicionar"
@@ -749,16 +873,11 @@ namespace MikroTikSDN.UI
             _btnDelete.Text = "🗑️ Remover";
             _btnToggle.Text = "⚡ Ativar/Desativar";
 
-            if (tag == "dns")
-            {
-                _btnAction.Text = "⚙️ Configurar DNS";
-            }
-            else if (tag == "bridge")
-                _btnAction.Text = _showBridgePorts ? "🌉 Bridges" : "🔌 Portas";
-            else if (tag == "wifi")
-                _btnAction.Text = _showWirelessProfiles ? "🌐 Wireless" : "🔐 Perfis";
-            else if (tag == "dhcp")
-                _btnAction.Text = _showDhcpClient ? "🖥️ Servers" : "🌐 Clients";
+            if (tag == "dns") _btnAction.Text = "⚙️ Configurar DNS";
+            else if (tag == "bridge") _btnAction.Text = _showBridgePorts ? "🌉 Bridges" : "🔌 Portas";
+            else if (tag == "wifi") _btnAction.Text = _showWirelessProfiles ? "🌐 Wireless" : "🔐 Perfis";
+            else if (tag == "dhcp") _btnAction.Text = _showDhcpClient ? "🖥️ Servers" : "🌐 Clients";
+            else if (tag == "wg") _btnAction.Text = _showWgPeers ? "🖥️ Ver Servidores" : "📱 Ver Clientes";
         }
 
         // ─── Gestão de sessões e routers ──────────────────────────────────────
@@ -776,7 +895,7 @@ namespace MikroTikSDN.UI
         {
             if (_cmbRouters.SelectedItem is not string item) return;
             int start = item.LastIndexOf('(') + 1;
-            int end   = item.LastIndexOf(')');
+            int end = item.LastIndexOf(')');
             if (start > 0 && end > start)
             {
                 SwitchRouter(item.Substring(start, end - start));
@@ -794,7 +913,7 @@ namespace MikroTikSDN.UI
         private void SwitchRouter(string ip)
         {
             if (!_sessions.TryGetValue(ip, out var s)) return;
-            _current           = s;
+            _current = s;
             lblRouterInfo.Text = $"— {s.Device.Name} ({ip})";
         }
 
@@ -809,20 +928,21 @@ namespace MikroTikSDN.UI
 
         private void SetStatus(string msg, bool error = false)
         {
-            lblStatus.Text      = msg;
+            lblStatus.Text = msg;
             lblStatus.ForeColor = error ? Color.Salmon : Color.Gray;
         }
 
         private static string GetSectionTitle(string tag) => tag switch
         {
-            "iface"  => "Interfaces",
+            "iface" => "Interfaces",
             "bridge" => "Bridge",
-            "wifi"   => "Wireless",
-            "ip"     => "Endereços IP",
-            "dhcp"   => "DHCP",
-            "dns"    => "DNS Settings",
-            "route"  => "Rotas Estáticas",
-            _        => "Rede"
+            "wifi" => "Wireless",
+            "ip" => "Endereços IP",
+            "dhcp" => "DHCP",
+            "dns" => "DNS Settings",
+            "route" => "Rotas Estáticas",
+            "wg" => "WireGuard VPN",
+            _ => "Rede"
         };
     }
 
@@ -830,39 +950,41 @@ namespace MikroTikSDN.UI
 
     public class RouterSession
     {
-        public RouterClient   Client   { get; }
-        public RouterDevice   Device   { get; }
+        public RouterClient Client { get; }
+        public RouterDevice Device { get; }
         public RouterServices Services { get; }
 
         public RouterSession(RouterClient c, RouterDevice d)
         {
-            Client   = c;
-            Device   = d;
+            Client = c;
+            Device = d;
             Services = new RouterServices(c);
         }
     }
 
     public class RouterServices
     {
-        public InterfaceService  Interfaces  { get; }
-        public WirelessService   Wireless    { get; }
-        public IpAddressService  IpAddresses { get; }
-        public BridgeService     Bridges     { get; }
-        public RouteService      Routes      { get; }
-        public DhcpService       Dhcp        { get; }
-        public DnsService        Dns         { get; }
-        public IpPoolService     IpPools     { get; }
+        public InterfaceService Interfaces { get; }
+        public WirelessService Wireless { get; }
+        public IpAddressService IpAddresses { get; }
+        public BridgeService Bridges { get; }
+        public RouteService Routes { get; }
+        public DhcpService Dhcp { get; }
+        public DnsService Dns { get; }
+        public IpPoolService IpPools { get; }
+        public WireGuardService WireGuard { get; } // <--- ADICIONADO AQUI
 
         public RouterServices(RouterClient c)
         {
-            Interfaces  = new InterfaceService(c);
-            Wireless    = new WirelessService(c);
+            Interfaces = new InterfaceService(c);
+            Wireless = new WirelessService(c);
             IpAddresses = new IpAddressService(c);
-            Bridges     = new BridgeService(c);
-            Routes      = new RouteService(c);
-            Dhcp        = new DhcpService(c);
-            Dns         = new DnsService(c);
-            IpPools     = new IpPoolService(c);
+            Bridges = new BridgeService(c);
+            Routes = new RouteService(c);
+            Dhcp = new DhcpService(c);
+            Dns = new DnsService(c);
+            IpPools = new IpPoolService(c);
+            WireGuard = new WireGuardService(c); // <--- INICIALIZADO AQUI
         }
     }
 }
