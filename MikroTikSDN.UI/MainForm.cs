@@ -74,6 +74,43 @@ namespace MikroTikSDN.UI
             => await LoadSectionAsync(_currentTag);
 
         // ─── Botão Ação (alterna sub-vista ou abre diálogo DNS) ───────────────
+        private async void BtnLogout_Click(object sender, EventArgs e)
+        {
+            if (_current == null) return;
+
+            string ipLogout = _current.Device.IpAddress;
+            string nomeLogout = _current.Device.Name;
+
+            // Pergunta de confirmação
+            if (MessageBox.Show($"Tem a certeza que deseja terminar a sessão no router '{nomeLogout}' ({ipLogout})?",
+                "Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                // 1. Remove o router da memória
+                _sessions.Remove(ipLogout);
+
+                // 2. Verifica se ainda sobraram routers
+                if (_sessions.Count > 0)
+                {
+                    // Pega no IP do "próximo" router que sobrou na lista
+                    string proximoIp = _sessions.Keys.First();
+
+                    // Muda o controlo para esse router
+                    SwitchRouter(proximoIp);
+                    RefreshRouterCombo();
+
+                    // Recarrega a tabela com os dados do novo router
+                    await LoadSectionAsync(_currentTag);
+                    SetStatus($"Sessão terminada em {ipLogout}. Agora a gerir {proximoIp}.", false);
+                }
+                else
+                {
+                    // 3. Era o último router! 
+                    // Application.Restart() é a forma mais segura de fazer logout no WinForms.
+                    // Limpa a RAM (fechando o _vaultPrivado e as ligações) e volta a abrir a app do zero (LoginForm).
+                    Application.Restart();
+                }
+            }
+        }
 
         private async void BtnAction_Click(object sender, EventArgs e)
         {

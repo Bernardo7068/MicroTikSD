@@ -19,7 +19,7 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName(".id")] public string? Id { get; set; }
         [JsonPropertyName("interface")] public string? Interface { get; set; }
         // Propriedade local para a nossa App guardar a chave
-        [JsonPropertyName("private-key")] public string PrivateKey { get; set; }
+        [JsonPropertyName("private-key")] public string? PrivateKey { get; set; }
         [JsonPropertyName("public-key")] public string? PublicKey { get; set; }
         [JsonPropertyName("allowed-address")] public string? AllowedAddress { get; set; }
         [JsonPropertyName("comment")] public string? Comment { get; set; }

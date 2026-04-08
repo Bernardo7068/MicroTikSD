@@ -10,7 +10,7 @@ namespace MikroTikSDN.UI
         private System.Windows.Forms.Label lblAppTitle, lblSectionTitle, lblRouterInfo, lblStatus;
         private System.Windows.Forms.DataGridView _dgvData;
         private System.Windows.Forms.ComboBox _cmbRouters;
-        private System.Windows.Forms.Button _btnAddNewRouter;
+        private System.Windows.Forms.Button _btnAddNewRouter, _btnLogout;
 
         // Botões da toolbar de ações
         private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle, _btnExport;
@@ -135,12 +135,28 @@ namespace MikroTikSDN.UI
                 Cursor = Cursors.Hand,
                 Font = new Font("Segoe UI", 9f)
             };
+            _btnLogout = new Button
+            {
+                Text = "🚪 Sair",
+                Location = new Point(830, 16), // Colocado exatos 90px à esquerda do botão "+ Router"
+                Size = new Size(80, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a mesma âncora
+                BackColor = Color.IndianRed, // Cor diferente para destacar a ação de Logout
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 9f)
+            };
+            _btnLogout.FlatAppearance.BorderSize = 0; // Remove a borda preta padrão para ficar moderno
+
+            // Muito importante: Ligar o botão ao código que faz o Logout!
+            _btnLogout.Click += BtnLogout_Click;
             _btnAddNewRouter.FlatAppearance.BorderSize = 0;
             _btnAddNewRouter.Click += BtnAddNewRouter_Click;
 
             _cmbRouters = new ComboBox
             {
-                Location = new Point(680, 20), // Medida ajustada para os 1020px
+                Location = new Point(595, 20), // Medida ajustada para os 1020px
                 Size = new Size(225, 25),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
                 DropDownStyle = ComboBoxStyle.DropDownList,
@@ -151,7 +167,7 @@ namespace MikroTikSDN.UI
             };
             _cmbRouters.SelectedIndexChanged += CmbRouters_SelectedIndexChanged;
 
-            pnlHeader.Controls.AddRange(new Control[] { lblSectionTitle, lblRouterInfo, _btnAddNewRouter, _cmbRouters });
+            pnlHeader.Controls.AddRange(new Control[] { lblSectionTitle, lblRouterInfo, _btnLogout, _btnAddNewRouter, _cmbRouters });
 
             // ── Toolbar de ações (Add / Delete / Action / Refresh) ────────────
             pnlToolbar = new Panel
