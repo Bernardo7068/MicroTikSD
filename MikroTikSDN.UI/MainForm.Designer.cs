@@ -126,7 +126,7 @@ namespace MikroTikSDN.UI
             _btnAddNewRouter = new Button
             {
                 Text = "＋ Router",
-                Location = new Point(920, 16), // Medida ajustada para os 1020px
+                Location = new Point(830, 16), // Medida ajustada para os 1020px
                 Size = new Size(80, 32),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
                 BackColor = accent,
@@ -138,7 +138,7 @@ namespace MikroTikSDN.UI
             _btnLogout = new Button
             {
                 Text = "🚪 Sair",
-                Location = new Point(830, 16), // Colocado exatos 90px à esquerda do botão "+ Router"
+                Location = new Point(920, 16), // Colocado exatos 90px à esquerda do botão "+ Router"
                 Size = new Size(80, 32),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a mesma âncora
                 BackColor = Color.IndianRed, // Cor diferente para destacar a ação de Logout
