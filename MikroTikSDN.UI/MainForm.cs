@@ -313,6 +313,18 @@ namespace MikroTikSDN.UI
                         }
                         break;
 
+                    case "pool":
+                        using (var d = new CrudDialog("Nova IP Pool",
+                            ("Nome", "dhcp-pool"),
+                            ("Ranges (IP-IP)", "192.168.88.10-192.168.88.254")))
+                        {
+                            if (d.ShowDialog(this) == DialogResult.OK)
+                            {
+                                await svc.IpPools.AddAsync(d[0].Trim(), d[1].Trim());
+                            }
+                        }
+                        break;
+
                     case "wg":
                         if (_showWgPeers) // Adicionar CLIENTE
                         {
@@ -495,6 +507,9 @@ namespace MikroTikSDN.UI
                                 }
                             }
                             break;
+                        case "pool":
+                            await svc.IpPools.DeleteAsync(id);
+                            break;
                     }
                 }
 
@@ -532,6 +547,9 @@ namespace MikroTikSDN.UI
                         _dgvData.DataSource = _showDhcpClient
                                        ? await svc.Dhcp.GetClientsAsync()
                                        : await svc.Dhcp.GetServersAsync(); break;
+                    case "pool":
+                        _dgvData.DataSource = await svc.IpPools.GetAllAsync();
+                        break;
                     case "dns": await LoadDnsAsync(svc); break;
                     case "wg": _dgvData.DataSource = _showWgPeers ? await svc.WireGuard.GetPeersAsync() : await svc.WireGuard.GetInterfacesAsync(); break;
                 }
@@ -736,6 +754,20 @@ namespace MikroTikSDN.UI
                         }
                         break;
 
+                    case "pool":
+                        var poolItem = (MikroTikSDN.Core.Models.IpPoolModel)item; // Garante que o nome do teu modelo é este
+                        using (var d = new CrudDialog($"Editar Pool: {poolItem.Name}",
+                            ("Nome", poolItem.Name ?? ""),
+                            ("Ranges", poolItem.Ranges ?? "")))
+                        {
+                            if (d.ShowDialog(this) == DialogResult.OK)
+                            {
+                                await svc.IpPools.UpdateAsync(poolItem.Id!, d[0].Trim(), d[1].Trim());
+                                await LoadSectionAsync("pool");
+                            }
+                        }
+                        break;
+
                     case "dns":
                         await ConfigurarDnsAsync();
                         break;
@@ -873,6 +905,7 @@ namespace MikroTikSDN.UI
                 ["AddressPool"] = "Pool",
                 ["MasterInterface"] = "Master",
                 ["AuthTypes"] = "Auth Types",
+                ["Ranges"] = "Gamas de IPs (Ranges)",
                 // Novos para o WireGuard:
                 ["AllowedAddress"] = "IP Permitido",
                 ["PublicKey"] = "Chave Pública",
@@ -891,11 +924,18 @@ namespace MikroTikSDN.UI
             _btnAdd.Visible = tag != "iface" && tag != "dns";
             _btnDelete.Visible = tag != "iface" && tag != "dns";
             _btnAction.Visible = tag is "bridge" or "wifi" or "dhcp" or "dns" or "wg";
+
+            // As pools não se podem "desativar", por isso escondemos o botão Toggle
             _btnToggle.Visible = tag is "iface" or "wifi" or "bridge" or "ip" or "dhcp" or "route";
-            if (_btnExport != null) _btnExport.Visible = (tag == "wg" && _showWgPeers); // Botão Export só nos Peers
+
+            if (_btnExport != null) _btnExport.Visible = (tag == "wg" && _showWgPeers);
+
+            // MOSTRA O ATALHO SÓ NA PÁGINA DO DHCP
+            if (_btnGoToPools != null) _btnGoToPools.Visible = (tag == "dhcp");
 
             if (tag == "wifi" && _showWirelessProfiles) _btnToggle.Visible = false;
 
+            // Muda o texto do botão de Adicionar consoante a página
             _btnAdd.Text = tag switch
             {
                 "wifi" => _showWirelessProfiles ? "➕ Perfil" : "➕ VAP",
@@ -904,6 +944,7 @@ namespace MikroTikSDN.UI
                 "wg" => _showWgPeers ? "➕ Cliente" : "➕ Servidor",
                 "ip" => "➕ IP",
                 "route" => "➕ Rota",
+                "pool" => "➕ Pool", // <-- NOVO
                 _ => "➕ Adicionar"
             };
 

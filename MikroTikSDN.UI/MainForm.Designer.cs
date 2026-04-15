@@ -13,7 +13,7 @@ namespace MikroTikSDN.UI
         private System.Windows.Forms.Button _btnAddNewRouter, _btnLogout;
 
         // Botões da toolbar de ações
-        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle, _btnExport;
+        private System.Windows.Forms.Button _btnAdd, _btnDelete, _btnRefresh, _btnAction, _btnToggle, _btnExport, _btnGoToPools;
 
         protected override void Dispose(bool disposing)
         {
@@ -75,6 +75,7 @@ namespace MikroTikSDN.UI
                 { "🏷️  Endereços IP",   "ip"       },
                 { "🛤️  Rotas Estáticas","route"    },
                 { "🧬  Servidor DHCP",  "dhcp"     },
+                { "💧  IP Pools",       "pool"     },
                 { "🌐  Configurar DNS", "dns"      },
                 { "🛡️  WireGuard VPN",  "wg"       }
             };
@@ -99,6 +100,7 @@ namespace MikroTikSDN.UI
                 btn.FlatAppearance.MouseOverBackColor = bgItem;
                 btn.Click += NavButton_Click;
                 pnlNav.Controls.Add(btn);
+                btn.BringToFront();
             }
 
             pnlSidebar.Controls.AddRange(new Control[] { lblAppTitle, sep, pnlNav });
@@ -126,39 +128,39 @@ namespace MikroTikSDN.UI
             _btnAddNewRouter = new Button
             {
                 Text = "＋ Router",
-                Location = new Point(830, 16), // Medida ajustada para os 1020px
+                Location = new Point(830, 16),
                 Size = new Size(80, 32),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = accent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
                 Font = new Font("Segoe UI", 9f)
             };
+
             _btnLogout = new Button
             {
                 Text = "🚪 Sair",
-                Location = new Point(920, 16), // Colocado exatos 90px à esquerda do botão "+ Router"
+                Location = new Point(920, 16),
                 Size = new Size(80, 32),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a mesma âncora
-                BackColor = Color.IndianRed, // Cor diferente para destacar a ação de Logout
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = danger, // Usa a variável danger que já tinhas (vermelho bonito)
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
                 Font = new Font("Segoe UI", 9f)
             };
-            _btnLogout.FlatAppearance.BorderSize = 0; // Remove a borda preta padrão para ficar moderno
-
-            // Muito importante: Ligar o botão ao código que faz o Logout!
+            _btnLogout.FlatAppearance.BorderSize = 0;
             _btnLogout.Click += BtnLogout_Click;
+
             _btnAddNewRouter.FlatAppearance.BorderSize = 0;
             _btnAddNewRouter.Click += BtnAddNewRouter_Click;
 
             _cmbRouters = new ComboBox
             {
-                Location = new Point(595, 20), // Medida ajustada para os 1020px
+                Location = new Point(595, 20),
                 Size = new Size(225, 25),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right, // Mantém a âncora
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = bgItem,
                 ForeColor = Color.White,
@@ -180,10 +182,13 @@ namespace MikroTikSDN.UI
 
             _btnAdd = MakeToolbarBtn("＋ Adicionar", accent, 0);
             _btnDelete = MakeToolbarBtn("🗑 Apagar", danger, 130);
-            _btnToggle = MakeToolbarBtn("⚡ Toggle", success, 260);    // Novo
-            _btnAction = MakeToolbarBtn("🛠 Sub-Menu", bgItem, 390); // Mudei a cor e posição
+            _btnToggle = MakeToolbarBtn("⚡ Toggle", success, 260);
+            _btnAction = MakeToolbarBtn("🛠 Sub-Menu", bgItem, 390);
             _btnRefresh = MakeToolbarBtn("↻ Atualizar", bgItem, 520);
-            _btnExport = MakeToolbarBtn("📥 Exportar .conf", Color.FromArgb(76, 175, 130), 650);
+            _btnExport = MakeToolbarBtn("📥 Exportar .conf", success, 650);
+
+            // NOVO: Inicialização do botão que atira para as Pools (mesma posição do Export)
+            _btnGoToPools = MakeToolbarBtn("💧 Ver Pools", accent, 650);
 
             _btnAdd.Click += BtnAdd_Click;
             _btnDelete.Click += BtnDelete_Click;
@@ -192,7 +197,35 @@ namespace MikroTikSDN.UI
             _btnToggle.Click += BtnToggle_Click;
             _btnExport.Click += BtnExport_Click;
 
-            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnToggle, _btnAction, _btnRefresh, _btnExport });
+            // NOVO: Evento para saltar para a página das Pools
+            _btnGoToPools.Click += async (s, e) =>
+            {
+                _currentTag = "pool";
+                lblSectionTitle.Text = "IP Pools";
+
+                // Atualiza a cor de destaque no menu lateral
+                foreach (Control c in pnlNav.Controls)
+                {
+                    if (c is Button b)
+                    {
+                        if (b.Tag?.ToString() == "pool")
+                        {
+                            b.ForeColor = accent;
+                            b.BackColor = Color.Transparent;
+                        }
+                        else
+                        {
+                            b.ForeColor = Color.Silver;
+                            b.BackColor = Color.Transparent;
+                        }
+                    }
+                }
+
+                UpdateToolbarForSection("pool");
+                await LoadSectionAsync("pool");
+            };
+
+            pnlToolbar.Controls.AddRange(new Control[] { _btnAdd, _btnDelete, _btnToggle, _btnAction, _btnRefresh, _btnExport, _btnGoToPools });
 
             // ── DataGrid ──────────────────────────────────────────────────────
             _dgvData = new DataGridView
