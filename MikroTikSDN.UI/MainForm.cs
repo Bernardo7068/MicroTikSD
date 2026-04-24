@@ -45,6 +45,7 @@ namespace MikroTikSDN.UI
         {
             InitializeComponent();
             _dgvData.CellDoubleClick += DgvData_CellDoubleClick;
+            _dgvData.CellFormatting += DgvData_CellFormatting;
             AddSession(firstClient, firstRouter);
             SwitchRouter(firstRouter.IpAddress);
             this.Load += async (s, e) => await LoadSectionAsync("iface");
@@ -430,13 +431,19 @@ namespace MikroTikSDN.UI
                 if (_currentTag == "dns")
                 {
                     var dns = await svc.Dns.GetSettingsAsync();
-                    string novo = dns.AllowRemote?.ToLower() == "yes" ? "no" : "yes";
+
+                    // Vê o estado atual (seja "yes" ou "true")
+                    string currentAllow = dns.AllowRemote?.ToLower() ?? "no";
+
+                    // Se estiver ligado ("yes" ou "true"), muda para "no". Senão, muda para "yes".
+                    string novo = (currentAllow == "yes" || currentAllow == "true") ? "no" : "yes";
 
                     await svc.Dns.UpdateSettingsAsync(new Dictionary<string, string>
                     {
                         ["allow-remote-requests"] = novo
                     });
 
+                    // Atualiza a barra de estado
                     SetStatus(novo == "yes" ? "🟢 DNS Remoto Ativado" : "🔴 DNS Remoto Desativado");
                     await LoadSectionAsync("dns");
                     return;
@@ -596,13 +603,19 @@ namespace MikroTikSDN.UI
 
                 if (d.ShowDialog(this) == DialogResult.OK)
                 {
+                    // Lemos o que o utilizador escreveu e passamos tudo para minúsculas
+                    string allowVal = d[4].Trim().ToLower();
+
+                    // Aceita "yes" ou "true" para ligar. Qualquer outra coisa (como "no" ou "false") desliga.
+                    string finalAllow = (allowVal == "true" || allowVal == "yes") ? "yes" : "no";
+
                     var updates = new Dictionary<string, string>
                     {
                         ["servers"] = d[0].Trim(),
                         ["use-doh-server"] = d[1].Trim(),
                         ["cache-size"] = string.IsNullOrWhiteSpace(d[2]) ? "2048" : d[2].Trim(),
                         ["max-udp-packet-size"] = string.IsNullOrWhiteSpace(d[3]) ? "4096" : d[3].Trim(),
-                        ["allow-remote-requests"] = d[4].Trim().ToLower() == "yes" ? "yes" : "no"
+                        ["allow-remote-requests"] = finalAllow // <--- Vai sempre enviar "yes" ou "no"
                     };
 
                     SetStatus("A guardar DNS...");
@@ -891,10 +904,33 @@ namespace MikroTikSDN.UI
 
         // ─── Formatação das colunas ───────────────────────────────────────────
 
+        private void DgvData_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            // Verifica se estamos na coluna "Disabled" (o nome programático definido no teu Model)
+            if (_dgvData.Columns[e.ColumnIndex].Name == "Disabled" && e.Value != null)
+            {
+                string val = e.Value.ToString().ToLower();
+
+                if (val == "true" || val == "yes")
+                {
+                    e.Value = "🔴 Desativado";
+                    e.CellStyle.ForeColor = Color.Red; // Opcional: muda a cor do texto para vermelho
+                    e.FormattingApplied = true;
+                }
+                else if (val == "false" || val == "no")
+                {
+                    e.Value = "🟢 Ativo";
+                    e.CellStyle.ForeColor = Color.Green; // Opcional: muda a cor do texto para verde
+                    e.FormattingApplied = true;
+                }
+            }
+        }
+
         private void FormatGridColumns(string tag)
         {
             if (_dgvData.Columns.Count == 0) return;
             if (_dgvData.Columns.Contains("Id")) _dgvData.Columns["Id"]!.Visible = false;
+            if (_dgvData.Columns.Contains("Running")) _dgvData.Columns["Running"]!.Visible = false;
 
             var names = new Dictionary<string, string>
             {
@@ -904,7 +940,7 @@ namespace MikroTikSDN.UI
                 ["Network"] = "Rede",
                 ["Interface"] = "Interface",
                 ["Running"] = "Ativo",
-                ["Disabled"] = "Desativado",
+                ["Disabled"] = "Estado",
                 ["DstAddress"] = "Destino",
                 ["Gateway"] = "Gateway",
                 ["Distance"] = "Distância",

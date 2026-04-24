@@ -12,6 +12,6 @@ namespace MikroTikSDN.Core.Models
         [JsonPropertyName("pvid")] public string? Pvid { get; set; }
 
         [JsonPropertyName("disabled")] public string? Disabled { get; set; }
-        [JsonPropertyName("inactive")] public string? Inactive { get; set; }
+        //[JsonPropertyName("inactive")] public string? Inactive { get; set; }
     }
 }
