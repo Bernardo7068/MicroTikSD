@@ -364,7 +364,7 @@ namespace MikroTikSDN.UI
                                         ipDetectado = _current.Device.IpAddress;
 
                                     // 4. Montar a configuração e mostrar a imagem
-                                    string config = WireGuardService.GenerateClientConfig(chaves.priv, d[2], server.PublicKey, $"{ipDetectado}:{server.ListenPort}");
+                                    string config = WireGuardService.GenerateClientConfig(chaves.priv, d[2], server.PublicKey ?? "", $"{ipDetectado}:{server.ListenPort}");
                                     MostrarQRCode(config);
                                 }
                             }
@@ -389,9 +389,10 @@ namespace MikroTikSDN.UI
 
             var svc = _current.Services;
             var item = _dgvData.SelectedRows[0].DataBoundItem;
-            string id = (item as dynamic).Id;
+            if (item == null) return;
+            string id = ((dynamic)item).Id ?? "";
 
-            string val = (item as dynamic).Disabled?.ToString().ToLower() ?? "false";
+            string val = ((dynamic)item).Disabled?.ToString().ToLower() ?? "false";
             bool isCurrentlyDisabled = val == "true" || val == "yes";
 
             try
@@ -444,7 +445,8 @@ namespace MikroTikSDN.UI
                 if (_dgvData.SelectedRows.Count == 0) return;
 
                 var item = _dgvData.SelectedRows[0].DataBoundItem;
-                string id = (item as dynamic).Id;
+                if (item == null) return;
+                string id = ((dynamic)item).Id ?? "";
 
                 if (_currentTag == "wifi")
                 {
@@ -619,13 +621,14 @@ namespace MikroTikSDN.UI
 
         // ─── Double-click para editar ─────────────────────────────────────────
 
-        private async void DgvData_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        private async void DgvData_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
             var svc = _current.Services;
             var item = _dgvData.Rows[e.RowIndex].DataBoundItem;
 
+            if (item == null) return;
             SetStatus("A carregar dados para edição...");
 
             try
@@ -633,7 +636,7 @@ namespace MikroTikSDN.UI
                 switch (_currentTag)
                 {
                     case "ip":
-                        string idIp = (item as dynamic).Id;
+                        string idIp = ((dynamic)item).Id ?? "";
                         var ipItem = (RouterIpAddress)item;
                         var ifacesIP = await svc.Interfaces.GetAllAsync();
                         using (var d = new CrudDialog($"Editar IP: {ipItem.Address}",
@@ -649,7 +652,7 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "bridge":
-                        string idBridge = (item as dynamic).Id;
+                        string idBridge = ((dynamic)item).Id ?? "";
                         if (_showBridgePorts)
                         {
                             var portItem = (RouterBridgePort)item;
@@ -680,7 +683,7 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "wifi":
-                        string idWifi = (item as dynamic).Id;
+                        string idWifi = ((dynamic)item).Id ?? "";
                         if (_showWirelessProfiles)
                         {
                             var profile = (RouterSecProfile)item;
@@ -702,7 +705,7 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "route":
-                        string idRoute = (item as dynamic).Id;
+                        string idRoute = ((dynamic)item).Id ?? "";
                         var route = (RouterRoute)item;
                         using (var d = new CrudDialog($"Editar Rota: {route.DstAddress}",
                             ("Destino", route.DstAddress ?? "0.0.0.0/0"),
@@ -719,7 +722,7 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "dhcp":
-                        string idDhcp = (item as dynamic).Id;
+                        string idDhcp = ((dynamic)item).Id ?? "";
                         var allIfaces = (await svc.Interfaces.GetAllAsync()).Select(i => i.Name).ToArray();
                         if (_showDhcpClient)
                         {
@@ -755,7 +758,8 @@ namespace MikroTikSDN.UI
                         break;
 
                     case "pool":
-                        var poolItem = (MikroTikSDN.Core.Models.IpPoolModel)item; // Garante que o nome do teu modelo é este
+                        var poolItem = item as MikroTikSDN.Core.Models.IpPoolModel; // Garante que o nome do teu modelo é este
+                        if (poolItem == null) return;
                         using (var d = new CrudDialog($"Editar Pool: {poolItem.Name}",
                             ("Nome", poolItem.Name ?? ""),
                             ("Ranges", poolItem.Ranges ?? "")))
@@ -774,13 +778,15 @@ namespace MikroTikSDN.UI
                     case "wg":
                         if (_showWgPeers)
                         {
-                            var peer = (WireGuardPeerModel)item;
+                            var peer = item as WireGuardPeerModel;
+                            if (peer == null) return;
                             using var d = new CrudDialog($"Editar Peer: {peer.Comment}", ("Interface", (await svc.WireGuard.GetInterfacesAsync()).Select(i => i.Name).ToArray()), ("Public Key", peer.PublicKey ?? ""), ("Allowed Address", peer.AllowedAddress ?? ""), ("Comment", peer.Comment ?? ""));
                             if (d.ShowDialog(this) == DialogResult.OK) { await svc.WireGuard.UpdatePeerAsync(peer.Id!, d[0], d[1], d[2], d[3]); await LoadSectionAsync("wg"); }
                         }
                         else
                         {
-                            var iface = (WireGuardInterfaceModel)item;
+                            var iface = item as WireGuardInterfaceModel;
+                            if (iface == null) return;
                             using var d = new CrudDialog($"Editar Servidor: {iface.Name}", ("Nome", iface.Name ?? ""), ("Porta", iface.ListenPort ?? "13231"));
                             if (d.ShowDialog(this) == DialogResult.OK) { await svc.WireGuard.UpdateInterfaceAsync(iface.Id!, d[0], d[1]); await LoadSectionAsync("wg"); }
                         }
@@ -795,12 +801,13 @@ namespace MikroTikSDN.UI
         private async void BtnExport_Click(object sender, EventArgs e)
         {
             if (_dgvData.SelectedRows.Count == 0 || !_showWgPeers) return;
-            var peer = (WireGuardPeerModel)_dgvData.SelectedRows[0].DataBoundItem;
+            var peer = _dgvData.SelectedRows[0].DataBoundItem as WireGuardPeerModel;
+            if (peer == null) return;
 
             try
             {
                 // Verifica a memória
-                if (!_vaultPrivado.TryGetValue(peer.Comment ?? "", out string privKey))
+                if (!_vaultPrivado.TryGetValue(peer.Comment ?? "", out string privKey ))
                 {
                     MessageBox.Show("Chave privada não encontrada nesta sessão. Tem de criar um cliente novo para gerar o QR Code.", "Aviso");
                     return;
@@ -816,7 +823,7 @@ namespace MikroTikSDN.UI
                 var server = (await _current.Services.WireGuard.GetInterfacesAsync()).First(i => i.Name == peer.Interface);
 
                 // 2. Gerar a string do ficheiro sem perguntar mais nada
-                string config = WireGuardService.GenerateClientConfig(privKey, peer.AllowedAddress, server.PublicKey, $"{ipDetectado}:{server.ListenPort}");
+                string config = WireGuardService.GenerateClientConfig(privKey, peer.AllowedAddress ?? "", server.PublicKey ?? "", $"{ipDetectado}:{server.ListenPort}");
 
                 // 3. Guardar Ficheiro .conf (Opcional, mas útil para o PC)
                 using (var sfd = new SaveFileDialog { Filter = "Config|*.conf", FileName = $"{peer.Comment}.conf" })
@@ -887,7 +894,7 @@ namespace MikroTikSDN.UI
         private void FormatGridColumns(string tag)
         {
             if (_dgvData.Columns.Count == 0) return;
-            if (_dgvData.Columns.Contains("Id")) _dgvData.Columns["Id"].Visible = false;
+            if (_dgvData.Columns.Contains("Id")) _dgvData.Columns["Id"]!.Visible = false;
 
             var names = new Dictionary<string, string>
             {

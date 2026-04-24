@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MikroTikSDN.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6c873b6762b5cec7e6c08c25af4773d591e537e8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+830a5dd014b594a2f325725044938a578a4b8c77")]
 [assembly: System.Reflection.AssemblyProductAttribute("MikroTikSDN.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MikroTikSDN.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

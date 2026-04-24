@@ -27,12 +27,14 @@ namespace MikroTikSDN.UI
         private readonly RouterManager _routerManager = new();
         private string _detectedMac = "Desconhecido";
 
+#pragma warning disable CS8618 // O campo não anulável precisa conter um valor não nulo ao sair do construtor
         public LoginForm(bool isDialogMode = false)
         {
             _isDialogMode = isDialogMode;
             SetupUI();
             LoadSavedRouters();
         }
+#pragma warning restore CS8618
 
         // ─── Lista de routers guardados ───────────────────────────────────────
 
